@@ -8,7 +8,7 @@ export function ComingSoon() {
         <h1 className='text-4xl leading-tight font-bold'>Coming Soon!</h1>
         <p className='text-center text-muted-foreground'>
           This page has not been created yet. <br />
-          Stay tuned though!
+          Stay tuned though!..
         </p>
       </div>
     </div>
