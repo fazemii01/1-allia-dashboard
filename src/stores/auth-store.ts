@@ -9,6 +9,8 @@ interface AuthUser {
   name?: string
   role: string[]
   exp: number
+  photo_url?: string
+  bio?: string
 }
 
 interface AuthState {

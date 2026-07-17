@@ -230,6 +230,10 @@ export default function EdukasiEditor({ item, onClose }: Props) {
     }
   }
 
+  const removePhoto = (idx: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== idx))
+  }
+
   // ── Drag Reorder for Photos ──
   const handleDragStart = (idx: number) => setDragIdx(idx)
   const handleDragOver = (e: React.DragEvent, idx: number) => {

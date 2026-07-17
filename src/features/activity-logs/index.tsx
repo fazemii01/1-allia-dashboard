@@ -73,7 +73,8 @@ export default function ActivityLogsPage() {
     return (
       <>
         <Header fixed>
-          <ThemeSwitch className='ms-auto' />
+          <div className='flex-1' />
+          <ThemeSwitch />
           <ConfigDrawer />
           <ProfileDropdown />
         </Header>
