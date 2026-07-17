@@ -18,9 +18,11 @@ export default defineConfig({
   ],
   server: {
     port: 9002,
+    host: '0.0.0.0',
   },
   preview: {
     port: 9002,
+    host: '0.0.0.0',
   },
   resolve: {
     alias: {
