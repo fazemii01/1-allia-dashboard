@@ -176,7 +176,6 @@ export default function AppointmentsPage() {
       }
       setDialogOpen(false)
       fetchAll()
-    } catch (e: any) {
       toast.success(editTarget ? 'Janji temu berhasil diperbarui!' : 'Janji temu berhasil dibuat!')
     } catch (e: any) {
       toast.error(e.message ?? 'Gagal menyimpan')

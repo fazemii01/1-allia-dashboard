@@ -93,7 +93,6 @@ export default function TherapistsPage() {
       }
       setDialogOpen(false)
       fetchTherapists()
-    } catch (e: any) {
       toast.success(editTarget ? 'Data terapis berhasil diperbarui!' : 'Terapis baru berhasil ditambahkan!')
     } catch (e: any) {
       toast.error(e.message ?? 'Gagal menyimpan data')
