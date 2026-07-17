@@ -19,10 +19,12 @@ export default defineConfig({
   server: {
     port: 9002,
     host: '0.0.0.0',
+    allowedHosts: ['app.alliakids.com'],
   },
   preview: {
     port: 9002,
     host: '0.0.0.0',
+    allowedHosts: ['app.alliakids.com'],
   },
   resolve: {
     alias: {
