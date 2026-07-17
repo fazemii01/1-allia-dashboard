@@ -194,7 +194,6 @@ export default function AppointmentsPage() {
       })
       setCancelTarget(null)
       fetchAll()
-    } catch (e: any) {
       toast.success('Janji temu berhasil dibatalkan!')
     } catch (e: any) {
       toast.error(e.message ?? 'Gagal membatalkan')

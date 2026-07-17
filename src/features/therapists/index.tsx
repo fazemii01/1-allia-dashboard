@@ -108,7 +108,6 @@ export default function TherapistsPage() {
       await apiFetch(`/admin/therapists/${deleteTarget.id}`, { method: 'DELETE' })
       setDeleteTarget(null)
       fetchTherapists()
-    } catch (e: any) {
       toast.success('Terapis berhasil dihapus!')
     } catch (e: any) {
       toast.error(e.message ?? 'Gagal menghapus data')
