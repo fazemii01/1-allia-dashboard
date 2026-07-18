@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
-import { IconFacebook, IconGithub } from '@/assets/brand-icons'
 import { useAuthStore } from '@/stores/auth-store'
 import { sleep, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -18,6 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { PasswordInput } from '@/components/password-input'
 
 const formSchema = z.object({
@@ -28,6 +28,7 @@ const formSchema = z.object({
     .string()
     .min(1, 'Please enter your password.')
     .min(4, 'Password must be at least 4 characters long.'),
+  rememberMe: z.boolean().optional(),
 })
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
@@ -48,6 +49,7 @@ export function UserAuthForm({
     defaultValues: {
       email: '',
       password: '',
+      rememberMe: false,
     },
   })
 
@@ -103,7 +105,7 @@ export function UserAuthForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-3', className)}
+        className={cn('grid gap-4', className)}
         {...props}
       >
         <FormField
@@ -111,9 +113,15 @@ export function UserAuthForm({
           name='email'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel className='font-manrope font-semibold text-slate-700 dark:text-slate-300 text-xs tracking-wide'>
+                Email
+              </FormLabel>
               <FormControl>
-                <Input placeholder='name@example.com' {...field} />
+                <Input
+                  placeholder='nama@email.com'
+                  className='h-10 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 focus-visible:ring-[#0a7cc3]/30 focus-visible:border-[#0a7cc3] focus-visible:ring-[3px] transition-all duration-200'
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -123,45 +131,46 @@ export function UserAuthForm({
           control={form.control}
           name='password'
           render={({ field }) => (
-            <FormItem className='relative'>
-              <FormLabel>Password</FormLabel>
+            <FormItem>
+              <FormLabel className='font-manrope font-semibold text-slate-700 dark:text-slate-300 text-xs tracking-wide'>
+                Kata Sandi
+              </FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' {...field} />
+                <PasswordInput
+                  placeholder='••••••••'
+                  inputClassName='h-10 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 focus-visible:ring-[#0a7cc3]/30 focus-visible:border-[#0a7cc3] focus-visible:ring-[3px] transition-all duration-200'
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
-              <Link
-                to='/forgot-password'
-                className='absolute inset-e-0 -top-0.5 text-sm font-medium text-muted-foreground hover:opacity-75'
-              >
-                Forgot password?
-              </Link>
             </FormItem>
           )}
         />
-        <Button className='mt-2' disabled={isLoading}>
-          {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
-          Sign in
+        <FormField
+          control={form.control}
+          name='rememberMe'
+          render={({ field }) => (
+            <FormItem className='flex flex-row items-center space-y-0 gap-2 py-1'>
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  className='rounded-[5px] border-slate-300 dark:border-slate-800 data-[state=checked]:bg-[#0a7cc3] data-[state=checked]:border-[#0a7cc3]'
+                />
+              </FormControl>
+              <FormLabel className='font-manrope font-semibold text-slate-600 dark:text-slate-400 text-xs cursor-pointer select-none'>
+                Ingat saya
+              </FormLabel>
+            </FormItem>
+          )}
+        />
+        <Button
+          className='mt-2 h-11 rounded-xl bg-gradient-to-r from-[#0a7cc3] to-[#0868a8] hover:from-[#f46b1e] hover:to-[#d85512] text-white font-semibold font-manrope shadow-md shadow-blue-500/10 hover:shadow-orange-500/10 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 gap-2 border-none cursor-pointer'
+          disabled={isLoading}
+        >
+          {isLoading ? <Loader2 className='animate-spin' /> : <LogIn className='size-4' />}
+          Masuk
         </Button>
-
-        <div className='relative my-2'>
-          <div className='absolute inset-0 flex items-center'>
-            <span className='w-full border-t' />
-          </div>
-          <div className='relative flex justify-center text-xs uppercase'>
-            <span className='bg-background px-2 text-muted-foreground'>
-              Or continue with
-            </span>
-          </div>
-        </div>
-
-        <div className='grid grid-cols-2 gap-2'>
-          <Button variant='outline' type='button' disabled={isLoading}>
-            <IconGithub className='h-4 w-4' /> GitHub
-          </Button>
-          <Button variant='outline' type='button' disabled={isLoading}>
-            <IconFacebook className='h-4 w-4' /> Facebook
-          </Button>
-        </div>
       </form>
     </Form>
   )
