@@ -257,7 +257,7 @@ export default function InvoicesPage() {
                         <div className="inline-flex gap-2 items-center">
                           {inv.invoice_token && (
                             <a
-                              href={`${process.env.NODE_ENV === 'production' ? 'https://alliakids.com' : 'http://localhost:9001'}/invoice/${inv.invoice_token}`}
+                            href={`${import.meta.env.PROD ? 'https://alliakids.com' : 'http://localhost:9001'}/invoice/${inv.invoice_token}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors"
