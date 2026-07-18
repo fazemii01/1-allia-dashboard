@@ -26,6 +26,13 @@ const emptyForm: Omit<Therapist, 'id'> = {
   is_active: true,
 }
 
+function resolveUrl(url: string | undefined): string {
+  if (!url) return ''
+  return url
+    .replace('http://194.233.91.132:19000', 'https://storage.alliago.id')
+    .replace('http://storage.alliago.id', 'https://storage.alliago.id')
+}
+
 export default function TherapistsPage() {
   const [therapists, setTherapists] = useState<Therapist[]>([])
   const [loading, setLoading] = useState(true)
@@ -219,7 +226,7 @@ export default function TherapistsPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           {t.photo_url ? (
-                            <img src={t.photo_url} alt={t.name} className="w-8 h-8 rounded-full object-cover" />
+                            <img src={resolveUrl(t.photo_url)} alt={t.name} className="w-8 h-8 rounded-full object-cover" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
                               {t.name.charAt(0).toUpperCase()}
@@ -323,7 +330,7 @@ export default function TherapistsPage() {
                 <div className="flex items-center gap-4">
                   {form.photo_url && (
                     <div className="w-16 h-16 rounded-full overflow-hidden border border-border bg-muted flex items-center justify-center shrink-0">
-                      <img src={form.photo_url} alt="Pratinjau Foto" className="w-full h-full object-cover" />
+                      <img src={resolveUrl(form.photo_url)} alt="Pratinjau Foto" className="w-full h-full object-cover" />
                     </div>
                   )}
                   <div className="flex-1">

@@ -140,7 +140,14 @@ export default function BannersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.image_url) {
+    
+    // Auto-fallback: if desktop is empty but mobile is uploaded, use mobile image as desktop
+    const finalForm = { ...form }
+    if (!finalForm.image_url && finalForm.mobile_image_url) {
+      finalForm.image_url = finalForm.mobile_image_url
+    }
+
+    if (!finalForm.image_url) {
       toast.warning('Gambar banner wajib diunggah!')
       return
     }
@@ -148,9 +155,9 @@ export default function BannersPage() {
     setSaving(true)
     try {
       if (editTarget) {
-        await api.patch(`/admin/banners/${editTarget.id}`, form)
+        await api.patch(`/admin/banners/${editTarget.id}`, finalForm)
       } else {
-        await api.post('/admin/banners', form)
+        await api.post('/admin/banners', finalForm)
       }
       setDialogOpen(false)
       fetchBanners()
