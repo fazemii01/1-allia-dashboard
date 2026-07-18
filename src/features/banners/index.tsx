@@ -23,9 +23,12 @@ const LANDING_BASE = import.meta.env.VITE_LANDING_URL ?? 'http://localhost:9001'
 
 function resolveUrl(url: string): string {
   if (!url) return ''
-  if (url.startsWith('http://') || url.startsWith('https://')) return url
-  if (url.startsWith('/assets/')) return `${LANDING_BASE}${url}`
-  return `${API_BASE}${url}`
+  const normalized = url
+    .replace('http://194.233.91.132:19000', 'https://storage.alliago.id')
+    .replace('http://storage.alliago.id', 'https://storage.alliago.id')
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) return normalized
+  if (normalized.startsWith('/assets/')) return `${LANDING_BASE}${normalized}`
+  return `${API_BASE}${normalized}`
 }
 
 const emptyForm = {
@@ -345,7 +348,7 @@ export default function BannersPage() {
                     {form.image_url ? (
                       <div className="absolute inset-0 group">
                         <img 
-                          src={form.image_url} 
+                          src={resolveUrl(form.image_url)} 
                           alt="Banner Preview" 
                           className="w-full h-full object-cover"
                         />
@@ -387,7 +390,7 @@ export default function BannersPage() {
                     {form.mobile_image_url ? (
                       <div className="absolute inset-0 group">
                         <img 
-                          src={form.mobile_image_url} 
+                          src={resolveUrl(form.mobile_image_url)} 
                           alt="Mobile Banner Preview" 
                           className="w-full h-full object-cover"
                         />
