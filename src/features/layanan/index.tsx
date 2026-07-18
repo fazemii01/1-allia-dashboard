@@ -34,12 +34,27 @@ interface Layanan {
   mengapa_memilih?: string[]
   isu_permasalahan?: string[]
   programs?: any
+  promo_active?: boolean
+  promo_label?: string
+  promo_price?: string
+  promo_ends_at?: string
 }
 
 // ─── Slug Helper ──────────────────────────────────────────────────────────────
 
 function toSlug(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+function calculatePromoPrice(priceStr: string, percent: number): string {
+  if (!priceStr) return ''
+  const numRegex = /(\d[\d\.,]*\d|\d)/g
+  return priceStr.replace(numRegex, (match) => {
+    const cleanNum = parseInt(match.replace(/[\.,]/g, ''))
+    if (isNaN(cleanNum)) return match
+    const discounted = Math.round(cleanNum * (1 - percent / 100))
+    return discounted.toLocaleString('id-ID')
+  })
 }
 
 // ─── Empty Forms ──────────────────────────────────────────────────────────────
@@ -56,12 +71,16 @@ const emptyLayananForm = {
   mengapa_memilih: [] as string[],
   isu_permasalahan: [] as string[],
   programs_json: '[]',
+  promo_active: false,
+  promo_label: '',
+  promo_price: '',
+  promo_ends_at: '',
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function LayananPage() {
-  const [tab, setTab] = useState<'kategori' | 'layanan'>('kategori')
+  const [tab, setTab] = useState<'kategori' | 'layanan' | 'promo'>('kategori')
 
   // Kategori state
   const [categories, setCategories] = useState<LayananCategory[]>([])
@@ -82,6 +101,13 @@ export default function LayananPage() {
   const [layForm, setLayForm] = useState(emptyLayananForm)
   const [laySaving, setLaySaving] = useState(false)
   const [layDeleteTarget, setLayDeleteTarget] = useState<Layanan | null>(null)
+
+  // Promo management bulk state
+  const [selectedLayananIds, setSelectedLayananIds] = useState<Array<string | number>>([])
+  const [promoPercent, setPromoPercent] = useState<string | number>('')
+  const [promoLabelInput, setPromoLabelInput] = useState('')
+  const [promoEndsInput, setPromoEndsInput] = useState('')
+  const [applyingPromo, setApplyingPromo] = useState(false)
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -143,6 +169,10 @@ export default function LayananPage() {
       mengapa_memilih: l.mengapa_memilih ?? [],
       isu_permasalahan: l.isu_permasalahan ?? [],
       programs_json: JSON.stringify(l.programs ?? [], null, 2),
+      promo_active: l.promo_active ?? false,
+      promo_label: l.promo_label ?? '',
+      promo_price: l.promo_price ?? '',
+      promo_ends_at: l.promo_ends_at ? new Date(l.promo_ends_at).toISOString().substring(0, 10) : '',
     })
     setLayDialogOpen(true)
   }
@@ -152,6 +182,7 @@ export default function LayananPage() {
       const payload = {
         ...layForm,
         programs: (() => { try { return JSON.parse(layForm.programs_json) } catch { return [] } })(),
+        promo_ends_at: layForm.promo_ends_at ? new Date(layForm.promo_ends_at).toISOString() : null,
       }
       if (layEditTarget) {
         await apiFetch(`/admin/layanan/${layEditTarget.id}`, { method: 'PATCH', body: JSON.stringify(payload) })
@@ -172,6 +203,93 @@ export default function LayananPage() {
       await apiFetch(`/admin/layanan/${l.id}`, { method: 'PATCH', body: JSON.stringify({ is_active: !l.is_active }) })
       fetchLayanan()
     } catch (e: any) { toast.error(e.message) }
+  }
+
+  // ── Bulk Promo CRUD ────────────────────────────────────────────────────────
+  const handleApplyPromo = async () => {
+    if (selectedLayananIds.length === 0) {
+      toast.warning('Pilih minimal satu layanan!')
+      return
+    }
+    const percent = parseFloat(String(promoPercent))
+    if (isNaN(percent) || percent <= 0 || percent > 100) {
+      toast.warning('Persentase promo harus antara 1% - 100%!')
+      return
+    }
+
+    setApplyingPromo(true)
+    let successCount = 0
+    for (const id of selectedLayananIds) {
+      const item = layanan.find((l) => l.id === id)
+      if (!item) continue
+
+      const originalPrice = item.stats?.mulai_dari || ''
+      const promoPrice = calculatePromoPrice(originalPrice, percent)
+      const label = promoLabelInput.trim() || `Diskon ${percent}%`
+
+      try {
+        await apiFetch(`/admin/layanan/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            promo_active: true,
+            promo_label: label,
+            promo_price: promoPrice,
+            promo_ends_at: promoEndsInput ? new Date(promoEndsInput).toISOString() : null,
+          }),
+        })
+        successCount++
+      } catch (err: any) {
+        console.error(`Gagal menerapkan promo pada #${id}:`, err.message)
+      }
+    }
+    toast.success(`Berhasil menerapkan promo ke ${successCount} layanan!`)
+    setApplyingPromo(false)
+    setSelectedLayananIds([])
+    fetchLayanan()
+  }
+
+  const handleRemovePromo = async () => {
+    if (selectedLayananIds.length === 0) {
+      toast.warning('Pilih minimal satu layanan!')
+      return
+    }
+
+    setApplyingPromo(true)
+    let successCount = 0
+    for (const id of selectedLayananIds) {
+      try {
+        await apiFetch(`/admin/layanan/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            promo_active: false,
+            promo_label: '',
+            promo_price: '',
+            promo_ends_at: null,
+          }),
+        })
+        successCount++
+      } catch (err: any) {
+        console.error(`Gagal menghapus promo pada #${id}:`, err.message)
+      }
+    }
+    toast.success(`Berhasil menonaktifkan promo dari ${successCount} layanan!`)
+    setApplyingPromo(false)
+    setSelectedLayananIds([])
+    fetchLayanan()
+  }
+
+  const toggleSelectLayanan = (id: string | number) => {
+    setSelectedLayananIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
+  const toggleSelectAllLayanan = () => {
+    if (selectedLayananIds.length === layanan.length) {
+      setSelectedLayananIds([])
+    } else {
+      setSelectedLayananIds(layanan.map((l) => l.id))
+    }
   }
 
   // ── Dynamic list helpers ───────────────────────────────────────────────────
@@ -201,7 +319,7 @@ export default function LayananPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-border">
-          {(['kategori', 'layanan'] as const).map((t) => (
+          {(['kategori', 'layanan', 'promo'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -209,7 +327,7 @@ export default function LayananPage() {
                 tab === t ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              {t === 'kategori' ? 'Kategori' : 'Layanan'}
+              {t === 'kategori' ? 'Kategori' : t === 'layanan' ? 'Layanan' : 'Manajemen Promo'}
             </button>
           ))}
         </div>
@@ -278,7 +396,16 @@ export default function LayananPage() {
                     </td></tr>
                   ) : layanan.map((l) => (
                     <tr key={l.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-semibold text-foreground">{l.title}</td>
+                      <td className="p-4 font-semibold text-foreground">
+                        <div className="flex items-center gap-2">
+                          {l.title}
+                          {l.promo_active && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                              PROMO: {l.promo_label || 'Aktif'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-4">
                         {(l.kategori_name ?? categories.find((c) => c.id === l.kategori_id)?.name) ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
@@ -307,6 +434,146 @@ export default function LayananPage() {
               </table>
             </div>
           </>
+        )}
+
+        {/* ── PROMO TAB ── */}
+        {tab === 'promo' && (
+          <div className="flex flex-col gap-6">
+            <div className="bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col md:flex-row gap-5 justify-between items-start md:items-center">
+              <div className="flex-1 space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Setelan Promo Massal</h3>
+                  <p className="text-xs text-muted-foreground">Pilih layanan di bawah, atur persentase diskon, lalu terapkan secara massal.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Persen Diskon (%)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={promoPercent}
+                      onChange={(e) => setPromoPercent(e.target.value)}
+                      placeholder="Contoh: 15"
+                      className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Label Promo (Opsional)</label>
+                    <input
+                      type="text"
+                      value={promoLabelInput}
+                      onChange={(e) => setPromoLabelInput(e.target.value)}
+                      placeholder="Diskon 15% / Paket Hemat"
+                      className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase">Tanggal Berakhir (Opsional)</label>
+                    <input
+                      type="date"
+                      value={promoEndsInput}
+                      onChange={(e) => setPromoEndsInput(e.target.value)}
+                      className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-row md:flex-col gap-2 shrink-0 w-full md:w-auto">
+                <button
+                  onClick={handleApplyPromo}
+                  disabled={applyingPromo || selectedLayananIds.length === 0}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2.5 rounded-md text-xs font-semibold shadow-sm disabled:opacity-50"
+                >
+                  {applyingPromo ? 'Memproses...' : 'Terapkan Promo'}
+                </button>
+                <button
+                  onClick={handleRemovePromo}
+                  disabled={applyingPromo || selectedLayananIds.length === 0}
+                  className="flex-1 border border-destructive/30 hover:bg-destructive/10 text-destructive px-4 py-2.5 rounded-md text-xs font-semibold disabled:opacity-50"
+                >
+                  {applyingPromo ? 'Memproses...' : 'Hapus Promo'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-muted border-b border-border text-xs font-bold text-muted-foreground uppercase">
+                    <th className="p-4 w-12 text-center">
+                      <input
+                        type="checkbox"
+                        checked={layanan.length > 0 && selectedLayananIds.length === layanan.length}
+                        onChange={toggleSelectAllLayanan}
+                        className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                      />
+                    </th>
+                    <th className="p-4">Layanan</th>
+                    <th className="p-4">Harga Asli</th>
+                    <th className="p-4">Simulasi Harga Promo</th>
+                    <th className="p-4">Status Promo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-sm">
+                  {layLoading ? (
+                    <tr>
+                      <td colSpan={5} className="p-10 text-center text-muted-foreground">Loading...</td>
+                    </tr>
+                  ) : layanan.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-10 text-center text-muted-foreground">Belum ada layanan</td>
+                    </tr>
+                  ) : (
+                    layanan.map((l) => {
+                      const isSelected = selectedLayananIds.includes(l.id)
+                      const computedPrice = promoPercent ? calculatePromoPrice(l.stats?.mulai_dari || '', Number(promoPercent)) : ''
+                      return (
+                        <tr key={l.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="p-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectLayanan(l.id)}
+                              className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                            />
+                          </td>
+                          <td className="p-4">
+                            <span className="font-semibold text-foreground">{l.title}</span>
+                          </td>
+                          <td className="p-4 text-muted-foreground">
+                            {l.stats?.mulai_dari || '—'}
+                          </td>
+                          <td className="p-4 text-red-500 font-bold">
+                            {computedPrice ? (
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-muted-foreground line-through font-normal">{l.stats?.mulai_dari}</span>
+                                <span>{computedPrice}</span>
+                              </div>
+                            ) : '—'}
+                          </td>
+                          <td className="p-4">
+                            {l.promo_active ? (
+                              <div className="flex flex-col gap-1 items-start">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                                  PROMO AKTIF
+                                </span>
+                                <span className="text-[10px] text-muted-foreground font-semibold">
+                                  {l.promo_label} ({l.promo_price})
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground uppercase font-bold">Tidak Ada Promo</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </Main>
 
@@ -444,6 +711,38 @@ export default function LayananPage() {
                 <textarea value={layForm.programs_json} onChange={(e) => setLayForm((f) => ({ ...f, programs_json: e.target.value }))}
                   rows={4} className="bg-background border border-input rounded-md px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:border-primary" />
               </div>
+              {/* Promo Section */}
+              <div className="border-t border-border pt-4 mt-2 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Aktifkan Promo</label>
+                  <button type="button" onClick={() => setLayForm((f) => ({ ...f, promo_active: !f.promo_active }))}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${layForm.promo_active ? 'bg-primary' : 'bg-muted'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${layForm.promo_active ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+                {layForm.promo_active && (
+                  <div className="flex flex-col gap-3 p-3 bg-muted/40 rounded-lg border border-border">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Label Promo</label>
+                        <input value={layForm.promo_label} onChange={(e) => setLayForm((f) => ({ ...f, promo_label: e.target.value }))}
+                          placeholder="Misal: Diskon 20%" className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Harga Promo</label>
+                        <input value={layForm.promo_price} onChange={(e) => setLayForm((f) => ({ ...f, promo_price: e.target.value }))}
+                          placeholder="Misal: Rp 440.000 / Sesi" className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Tanggal Berakhir Promo (Optional)</label>
+                      <input type="date" value={layForm.promo_ends_at} onChange={(e) => setLayForm((f) => ({ ...f, promo_ends_at: e.target.value }))}
+                        className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* is_active */}
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Status Aktif</label>

@@ -10,6 +10,7 @@ import { Pencil, Trash2, Plus, AlertTriangle, Eye, EyeOff, ExternalLink } from '
 interface Banner {
   id: number;
   image_url: string;
+  mobile_image_url?: string;
   href?: string;
   sort_order: number;
   is_active: boolean;
@@ -29,6 +30,7 @@ function resolveUrl(url: string): string {
 
 const emptyForm = {
   image_url: '',
+  mobile_image_url: '',
   href: '',
   sort_order: 1,
   is_active: true,
@@ -44,6 +46,7 @@ export default function BannersPage() {
   const [editTarget, setEditTarget] = useState<Banner | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [uploading, setUploading] = useState(false)
+  const [uploadingMobile, setUploadingMobile] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Delete confirm state
@@ -77,6 +80,7 @@ export default function BannersPage() {
     setEditTarget(banner)
     setForm({
       image_url: banner.image_url,
+      mobile_image_url: banner.mobile_image_url || '',
       href: banner.href || '',
       sort_order: banner.sort_order,
       is_active: banner.is_active,
@@ -84,17 +88,23 @@ export default function BannersPage() {
     setDialogOpen(true)
   }
 
-  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>, isMobile = false) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setUploading(true)
+    if (isMobile) {
+      setUploadingMobile(true)
+    } else {
+      setUploading(true)
+    }
+
     try {
       const token = localStorage.getItem('admin_token')
       const formData = new FormData()
       formData.append('image', file)
 
-      const response = await fetch('http://localhost:3001/api/admin/banners/upload', {
+      const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api'
+      const response = await fetch(`${apiBase}/admin/banners/upload`, {
         method: 'POST',
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -107,11 +117,21 @@ export default function BannersPage() {
       }
 
       const data = await response.json()
-      setForm((prev) => ({ ...prev, image_url: data.url }))
+      if (isMobile) {
+        setForm((prev) => ({ ...prev, mobile_image_url: data.url }))
+        toast.success('Gambar banner mobile berhasil diunggah!')
+      } else {
+        setForm((prev) => ({ ...prev, image_url: data.url }))
+        toast.success('Gambar banner desktop berhasil diunggah!')
+      }
     } catch (e: any) {
       toast.error(e.message ?? 'Terjadi kesalahan saat mengunggah gambar.')
     } finally {
-      setUploading(false)
+      if (isMobile) {
+        setUploadingMobile(false)
+      } else {
+        setUploading(false)
+      }
     }
   }
 
@@ -255,7 +275,14 @@ export default function BannersPage() {
                 {/* Banner Details */}
                 <div className="p-4 flex-1 flex flex-col justify-between">
                   <div className="space-y-1.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Redireksi / Link</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Target Redireksi / Link</span>
+                      {banner.mobile_image_url && (
+                        <span className="inline-flex items-center gap-1 bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 px-2 py-0.5 rounded-lg text-[9px] font-extrabold">
+                          📱 Mobile Banner
+                        </span>
+                      )}
+                    </div>
                     {banner.href ? (
                       <a 
                         href={banner.href} 
@@ -311,10 +338,10 @@ export default function BannersPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                {/* Image Upload */}
+                {/* Desktop Image Upload */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Gambar Banner *</label>
-                  <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center relative min-h-[140px] overflow-hidden">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Gambar Banner Desktop *</label>
+                  <div className="border border-dashed border-slate-200 dark:border-slate-750 rounded-xl p-4 text-center bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center relative min-h-[120px] overflow-hidden">
                     {form.image_url ? (
                       <div className="absolute inset-0 group">
                         <img 
@@ -324,11 +351,11 @@ export default function BannersPage() {
                         />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <label className="bg-white text-slate-900 px-3.5 py-2 rounded-xl text-xs font-black cursor-pointer shadow">
-                            Ganti Gambar
+                            Ganti Gambar Desktop
                             <input 
                               type="file" 
                               accept="image/*" 
-                              onChange={handleUploadImage} 
+                              onChange={(e) => handleUploadImage(e, false)} 
                               className="hidden" 
                             />
                           </label>
@@ -336,16 +363,57 @@ export default function BannersPage() {
                       </div>
                     ) : (
                       <>
-                        <span className="text-2xl mb-1">📤</span>
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pilih file gambar banner</span>
-                        <span className="text-[10px] text-slate-400 mt-0.5">Format file JPG/PNG, maks. 10MB</span>
-                        <label className="mt-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl text-xs font-black cursor-pointer shadow-sm hover:bg-slate-50">
+                        <span className="text-xl mb-1">🖥️</span>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pilih file gambar banner (Desktop)</span>
+                        <label className="mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl text-xs font-black cursor-pointer shadow-sm hover:bg-slate-50">
                           {uploading ? 'Mengunggah...' : 'Pilih File'}
                           <input 
                             type="file" 
                             accept="image/*" 
                             disabled={uploading}
-                            onChange={handleUploadImage} 
+                            onChange={(e) => handleUploadImage(e, false)} 
+                            className="hidden" 
+                          />
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mobile Image Upload */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Gambar Banner Mobile (Optional - akan fallback ke desktop jika kosong)</label>
+                  <div className="border border-dashed border-slate-200 dark:border-slate-750 rounded-xl p-4 text-center bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center relative min-h-[120px] overflow-hidden">
+                    {form.mobile_image_url ? (
+                      <div className="absolute inset-0 group">
+                        <img 
+                          src={form.mobile_image_url} 
+                          alt="Mobile Banner Preview" 
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <label className="bg-white text-slate-900 px-3.5 py-2 rounded-xl text-xs font-black cursor-pointer shadow">
+                            Ganti Gambar Mobile
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={(e) => handleUploadImage(e, true)} 
+                              className="hidden" 
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-xl mb-1">📱</span>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pilih file gambar banner (Mobile)</span>
+                        <label className="mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-750 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl text-xs font-black cursor-pointer shadow-sm hover:bg-slate-50">
+                          {uploadingMobile ? 'Mengunggah...' : 'Pilih File'}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            disabled={uploadingMobile}
+                            onChange={(e) => handleUploadImage(e, true)} 
                             className="hidden" 
                           />
                         </label>

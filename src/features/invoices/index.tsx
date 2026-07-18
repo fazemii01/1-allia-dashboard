@@ -4,7 +4,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { apiFetch } from '@/lib/api'
-import { Plus, CheckCircle, Send, Receipt, Trash2, Calendar as CalendarIcon } from 'lucide-react'
+import { ExternalLink, Plus, CheckCircle, Send, Receipt, Trash2, Calendar as CalendarIcon } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -31,6 +31,7 @@ interface LineItem {
 interface Invoice {
   id: string | number
   invoice_number?: string
+  invoice_token?: string
   patient_id: string | number
   patient_name?: string
   appointment_id?: string | number
@@ -253,7 +254,17 @@ export default function InvoicesPage() {
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        <div className="inline-flex gap-2">
+                        <div className="inline-flex gap-2 items-center">
+                          {inv.invoice_token && (
+                            <a
+                              href={`${process.env.NODE_ENV === 'production' ? 'https://alliakids.com' : 'http://localhost:9001'}/invoice/${inv.invoice_token}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors"
+                            >
+                              <ExternalLink size={11} /> Lihat
+                            </a>
+                          )}
                           {canManageInvoices && (
                             <button
                               onClick={() => handleMarkPaid(inv.id)}

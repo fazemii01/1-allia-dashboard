@@ -36,6 +36,40 @@ export default function TherapistsPage() {
   const [editTarget, setEditTarget] = useState<Therapist | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const token = localStorage.getItem('admin_token')
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api'
+      const response = await fetch(`${apiBase}/admin/therapists/upload`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Gagal mengunggah foto terapis.')
+      }
+
+      const data = await response.json()
+      setForm((prev) => ({ ...prev, photo_url: data.url }))
+      toast.success('Foto terapis berhasil diunggah!')
+    } catch (e: any) {
+      toast.error(e.message ?? 'Terjadi kesalahan saat mengunggah foto.')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<Therapist | null>(null)
@@ -285,13 +319,33 @@ export default function TherapistsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">URL Foto</label>
-                <input
-                  value={form.photo_url}
-                  onChange={(e) => setForm((f) => ({ ...f, photo_url: e.target.value }))}
-                  placeholder="https://..."
-                  className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary"
-                />
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Foto Terapis</label>
+                <div className="flex items-center gap-4">
+                  {form.photo_url && (
+                    <div className="w-16 h-16 rounded-full overflow-hidden border border-border bg-muted flex items-center justify-center shrink-0">
+                      <img src={form.photo_url} alt="Pratinjau Foto" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <label className="flex flex-col items-center justify-center border border-dashed border-input rounded-md p-3 hover:bg-accent/50 cursor-pointer transition-all text-center">
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {uploading ? 'Mengunggah...' : 'Klik untuk Pilih & Unggah Foto'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploading}
+                        onChange={handleUploadImage}
+                        className="hidden"
+                      />
+                    </label>
+                    {form.photo_url && (
+                      <span className="text-[10px] text-muted-foreground mt-1 block truncate max-w-[250px]">
+                        {form.photo_url}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Status Aktif</label>
