@@ -31,6 +31,39 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@clerk')) {
+              return 'clerk-auth';
+            }
+            if (id.includes('recharts') || id.includes('d3')) {
+              return 'charts';
+            }
+            if (id.includes('lucide-react')) {
+              return 'lucide-icons';
+            }
+            if (id.includes('react-dom') || id.includes('@tanstack')) {
+              return 'react-core';
+            }
+            if (id.includes('date-fns') || id.includes('react-day-picker')) {
+              return 'date-libs';
+            }
+            if (id.includes('@radix-ui')) {
+              return 'radix-ui';
+            }
+            if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) {
+              return 'forms-validation';
+            }
+            return 'vendor';
+          }
+        },
+      },
+    },
+  },
   test: {
     silent: 'passed-only',
     unstubEnvs: true,
