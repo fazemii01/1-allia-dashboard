@@ -44,6 +44,7 @@ export const sidebarData: SidebarData = {
         { title: 'Edukasi Skrining', url: '/edukasi', icon: BookOpen },
         { title: 'Manajemen Banner', url: '/banners', icon: Image },
         { title: 'Manajemen Mitra', url: '/partnerships', icon: Handshake },
+        { title: 'Manajemen Testimoni', url: '/testimonials', icon: MessagesSquare },
         { title: 'WhatsApp Manager', url: '/whatsapp', icon: MessagesSquare },
       ],
     },
