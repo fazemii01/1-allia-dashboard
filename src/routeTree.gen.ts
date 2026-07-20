@@ -456,6 +456,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/tasks/'
     | '/testimonials/'
+    | '/payment-methods/'
     | '/therapists/'
     | '/users/'
     | '/whatsapp/'
@@ -496,6 +497,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/testimonials'
+    | '/payment-methods'
     | '/therapists'
     | '/users'
     | '/whatsapp'
@@ -701,6 +703,13 @@ declare module '@tanstack/react-router' {
       path: '/testimonials'
       fullPath: '/testimonials/'
       preLoaderRoute: typeof AuthenticatedTestimonialsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/payment-methods/': {
+      id: '/_authenticated/payment-methods/'
+      path: '/payment-methods'
+      fullPath: '/payment-methods/'
+      preLoaderRoute: typeof AuthenticatedPaymentMethodsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/tasks/': {
