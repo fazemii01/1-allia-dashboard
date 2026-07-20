@@ -142,15 +142,18 @@ export default function InvoicesPage() {
     }
   }
 
+  const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null)
   const [deleting, setDeleting] = useState<string | number | null>(null)
 
-  const handleDelete = async (id: string | number) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus invoice ini? Data yang dihapus tidak dapat dikembalikan.')) return
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    const id = deleteTarget.id
     setDeleting(id)
     try {
       await apiFetch(`/admin/invoices/${id}`, { method: 'DELETE' })
       fetchAll()
       toast.success('Invoice berhasil dihapus!')
+      setDeleteTarget(null)
     } catch (e: any) {
       toast.error(e.message ?? 'Gagal menghapus invoice')
     } finally {
@@ -310,7 +313,7 @@ export default function InvoicesPage() {
                           </button>
                           {canManageInvoices && (
                             <button
-                              onClick={() => handleDelete(inv.id)}
+                              onClick={() => setDeleteTarget(inv)}
                               disabled={deleting === inv.id}
                               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-semibold disabled:opacity-40 transition-colors"
                               title="Hapus Invoice"
@@ -446,6 +449,43 @@ export default function InvoicesPage() {
                 className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
               >
                 {saving ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+          <div className="relative bg-card border border-border rounded-xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-destructive">
+              <div className="p-3 bg-destructive/10 rounded-full">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Hapus Invoice</h3>
+                <p className="text-xs text-muted-foreground">Konfirmasi penghapusan data invoice</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Apakah Anda yakin ingin menghapus invoice <span className="font-mono font-bold text-foreground">{deleteTarget.invoice_number ?? `INV-${deleteTarget.id}`}</span>? Data yang dihapus tidak dapat dikembalikan.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 rounded-md border border-border text-sm font-semibold hover:bg-muted transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting === deleteTarget.id}
+                className="px-4 py-2 rounded-md bg-destructive text-destructive-foreground text-sm font-semibold hover:bg-destructive/90 disabled:opacity-50 transition-colors inline-flex items-center gap-2"
+              >
+                {deleting === deleteTarget.id ? 'Menghapus...' : 'Ya, Hapus Invoice'}
               </button>
             </div>
           </div>
