@@ -14,6 +14,7 @@ import {
   Shield,
   Image,
   Handshake,
+  CreditCard,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -45,6 +46,7 @@ export const sidebarData: SidebarData = {
         { title: 'Manajemen Banner', url: '/banners', icon: Image },
         { title: 'Manajemen Mitra', url: '/partnerships', icon: Handshake },
         { title: 'Manajemen Testimoni', url: '/testimonials', icon: MessagesSquare },
+        { title: 'Metode Pembayaran', url: '/payment-methods', icon: CreditCard },
         { title: 'WhatsApp Manager', url: '/whatsapp', icon: MessagesSquare },
       ],
     },
