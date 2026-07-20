@@ -142,6 +142,22 @@ export default function InvoicesPage() {
     }
   }
 
+  const [deleting, setDeleting] = useState<string | number | null>(null)
+
+  const handleDelete = async (id: string | number) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus invoice ini? Data yang dihapus tidak dapat dikembalikan.')) return
+    setDeleting(id)
+    try {
+      await apiFetch(`/admin/invoices/${id}`, { method: 'DELETE' })
+      fetchAll()
+      toast.success('Invoice berhasil dihapus!')
+    } catch (e: any) {
+      toast.error(e.message ?? 'Gagal menghapus invoice')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   const handleSendWa = async (id: string | number) => {
     setSendingWa(id)
     try {
@@ -292,6 +308,17 @@ export default function InvoicesPage() {
                             <Send size={12} />
                             {sendingWa === inv.id ? '...' : 'Kirim WA'}
                           </button>
+                          {canManageInvoices && (
+                            <button
+                              onClick={() => handleDelete(inv.id)}
+                              disabled={deleting === inv.id}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-destructive/30 text-destructive hover:bg-destructive/10 text-xs font-semibold disabled:opacity-40 transition-colors"
+                              title="Hapus Invoice"
+                            >
+                              <Trash2 size={12} />
+                              {deleting === inv.id ? '...' : 'Hapus'}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
