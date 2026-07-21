@@ -32,9 +32,9 @@ import { Route as AuthenticatedTestimonialsIndexRouteImport } from './routes/_au
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedPermissionsIndexRouteImport } from './routes/_authenticated/permissions/index'
+import { Route as AuthenticatedPaymentMethodsIndexRouteImport } from './routes/_authenticated/payment-methods/index'
 import { Route as AuthenticatedPatientsIndexRouteImport } from './routes/_authenticated/patients/index'
 import { Route as AuthenticatedPartnershipsIndexRouteImport } from './routes/_authenticated/partnerships/index'
-import { Route as AuthenticatedPaymentMethodsIndexRouteImport } from './routes/_authenticated/payment-methods/index'
 import { Route as AuthenticatedLayananIndexRouteImport } from './routes/_authenticated/layanan/index'
 import { Route as AuthenticatedInvoicesIndexRouteImport } from './routes/_authenticated/invoices/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
@@ -154,12 +154,6 @@ const AuthenticatedTestimonialsIndexRoute =
     path: '/testimonials/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedPaymentMethodsIndexRoute =
-  AuthenticatedPaymentMethodsIndexRouteImport.update({
-    id: '/payment-methods/',
-    path: '/payment-methods/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedTasksIndexRoute = AuthenticatedTasksIndexRouteImport.update({
   id: '/tasks/',
   path: '/tasks/',
@@ -175,6 +169,12 @@ const AuthenticatedPermissionsIndexRoute =
   AuthenticatedPermissionsIndexRouteImport.update({
     id: '/permissions/',
     path: '/permissions/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPaymentMethodsIndexRoute =
+  AuthenticatedPaymentMethodsIndexRouteImport.update({
+    id: '/payment-methods/',
+    path: '/payment-methods/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedPatientsIndexRoute =
@@ -321,11 +321,11 @@ export interface FileRoutesByFullPath {
   '/layanan/': typeof AuthenticatedLayananIndexRoute
   '/partnerships/': typeof AuthenticatedPartnershipsIndexRoute
   '/patients/': typeof AuthenticatedPatientsIndexRoute
+  '/payment-methods/': typeof AuthenticatedPaymentMethodsIndexRoute
   '/permissions/': typeof AuthenticatedPermissionsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/tasks/': typeof AuthenticatedTasksIndexRoute
   '/testimonials/': typeof AuthenticatedTestimonialsIndexRoute
-  '/payment-methods/': typeof AuthenticatedPaymentMethodsIndexRoute
   '/therapists/': typeof AuthenticatedTherapistsIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
   '/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
@@ -362,11 +362,11 @@ export interface FileRoutesByTo {
   '/layanan': typeof AuthenticatedLayananIndexRoute
   '/partnerships': typeof AuthenticatedPartnershipsIndexRoute
   '/patients': typeof AuthenticatedPatientsIndexRoute
+  '/payment-methods': typeof AuthenticatedPaymentMethodsIndexRoute
   '/permissions': typeof AuthenticatedPermissionsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/testimonials': typeof AuthenticatedTestimonialsIndexRoute
-  '/payment-methods': typeof AuthenticatedPaymentMethodsIndexRoute
   '/therapists': typeof AuthenticatedTherapistsIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
   '/whatsapp': typeof AuthenticatedWhatsappIndexRoute
@@ -408,11 +408,11 @@ export interface FileRoutesById {
   '/_authenticated/layanan/': typeof AuthenticatedLayananIndexRoute
   '/_authenticated/partnerships/': typeof AuthenticatedPartnershipsIndexRoute
   '/_authenticated/patients/': typeof AuthenticatedPatientsIndexRoute
+  '/_authenticated/payment-methods/': typeof AuthenticatedPaymentMethodsIndexRoute
   '/_authenticated/permissions/': typeof AuthenticatedPermissionsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
   '/_authenticated/testimonials/': typeof AuthenticatedTestimonialsIndexRoute
-  '/_authenticated/payment-methods/': typeof AuthenticatedPaymentMethodsIndexRoute
   '/_authenticated/therapists/': typeof AuthenticatedTherapistsIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
@@ -452,11 +452,11 @@ export interface FileRouteTypes {
     | '/layanan/'
     | '/partnerships/'
     | '/patients/'
+    | '/payment-methods/'
     | '/permissions/'
     | '/settings/'
     | '/tasks/'
     | '/testimonials/'
-    | '/payment-methods/'
     | '/therapists/'
     | '/users/'
     | '/whatsapp/'
@@ -493,11 +493,11 @@ export interface FileRouteTypes {
     | '/layanan'
     | '/partnerships'
     | '/patients'
+    | '/payment-methods'
     | '/permissions'
     | '/settings'
     | '/tasks'
     | '/testimonials'
-    | '/payment-methods'
     | '/therapists'
     | '/users'
     | '/whatsapp'
@@ -538,11 +538,11 @@ export interface FileRouteTypes {
     | '/_authenticated/layanan/'
     | '/_authenticated/partnerships/'
     | '/_authenticated/patients/'
+    | '/_authenticated/payment-methods/'
     | '/_authenticated/permissions/'
     | '/_authenticated/settings/'
     | '/_authenticated/tasks/'
     | '/_authenticated/testimonials/'
-    | '/_authenticated/payment-methods/'
     | '/_authenticated/therapists/'
     | '/_authenticated/users/'
     | '/_authenticated/whatsapp/'
@@ -705,13 +705,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTestimonialsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/payment-methods/': {
-      id: '/_authenticated/payment-methods/'
-      path: '/payment-methods'
-      fullPath: '/payment-methods/'
-      preLoaderRoute: typeof AuthenticatedPaymentMethodsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/tasks/': {
       id: '/_authenticated/tasks/'
       path: '/tasks'
@@ -731,6 +724,13 @@ declare module '@tanstack/react-router' {
       path: '/permissions'
       fullPath: '/permissions/'
       preLoaderRoute: typeof AuthenticatedPermissionsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/payment-methods/': {
+      id: '/_authenticated/payment-methods/'
+      path: '/payment-methods'
+      fullPath: '/payment-methods/'
+      preLoaderRoute: typeof AuthenticatedPaymentMethodsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/patients/': {
@@ -907,10 +907,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLayananIndexRoute: typeof AuthenticatedLayananIndexRoute
   AuthenticatedPartnershipsIndexRoute: typeof AuthenticatedPartnershipsIndexRoute
   AuthenticatedPatientsIndexRoute: typeof AuthenticatedPatientsIndexRoute
+  AuthenticatedPaymentMethodsIndexRoute: typeof AuthenticatedPaymentMethodsIndexRoute
   AuthenticatedPermissionsIndexRoute: typeof AuthenticatedPermissionsIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedTestimonialsIndexRoute: typeof AuthenticatedTestimonialsIndexRoute
-  AuthenticatedPaymentMethodsIndexRoute: typeof AuthenticatedPaymentMethodsIndexRoute
   AuthenticatedTherapistsIndexRoute: typeof AuthenticatedTherapistsIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedWhatsappIndexRoute: typeof AuthenticatedWhatsappIndexRoute
@@ -931,10 +931,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLayananIndexRoute: AuthenticatedLayananIndexRoute,
   AuthenticatedPartnershipsIndexRoute: AuthenticatedPartnershipsIndexRoute,
   AuthenticatedPatientsIndexRoute: AuthenticatedPatientsIndexRoute,
+  AuthenticatedPaymentMethodsIndexRoute: AuthenticatedPaymentMethodsIndexRoute,
   AuthenticatedPermissionsIndexRoute: AuthenticatedPermissionsIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedTestimonialsIndexRoute: AuthenticatedTestimonialsIndexRoute,
-  AuthenticatedPaymentMethodsIndexRoute: AuthenticatedPaymentMethodsIndexRoute,
   AuthenticatedTherapistsIndexRoute: AuthenticatedTherapistsIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
   AuthenticatedWhatsappIndexRoute: AuthenticatedWhatsappIndexRoute,

@@ -434,14 +434,17 @@ export default function BannersPage() {
 
                 {/* Redirect Link */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Link Redireksi (Optional)</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Link Redireksi / Key Halaman (Optional)</label>
                   <input
                     type="text"
                     value={form.href}
                     onChange={(e) => setForm((prev) => ({ ...prev, href: e.target.value }))}
-                    placeholder="https://wa.me/... atau /apply"
+                    placeholder="https://wa.me/... atau partnership-hero / partnership-why / partnership-contact"
                     className="w-full border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs focus:ring-1 focus:ring-wellme-primary dark:bg-slate-950 dark:text-slate-50 focus:outline-none"
                   />
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    💡 <strong>Tips Halaman Kolaborasi:</strong> Isi link dengan <code>partnership-hero</code> untuk Banner Hero, <code>partnership-why</code> untuk gambar Mengapa Berkolaborasi, atau <code>partnership-contact</code> untuk gambar Mari Mulai Berdiskusi.
+                  </p>
                 </div>
 
                 {/* Order & Status Row */}
