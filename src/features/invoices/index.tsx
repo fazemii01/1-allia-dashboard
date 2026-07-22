@@ -37,7 +37,11 @@ interface Invoice {
   appointment_id?: string | number
   due_date: string
   status: 'belum_bayar' | 'sudah_bayar' | 'jatuh_tempo' | 'menunggu_verifikasi'
-  total: number
+  payment_type?: 'full' | 'dp' | 'pelunasan' | string
+  parent_invoice_id?: string | number
+  dp_percentage?: number
+  total?: number
+  total_amount?: number
   line_items?: LineItem[]
   payment_proof?: string
 }
@@ -129,6 +133,8 @@ export default function InvoicesPage() {
     }
   }
 
+  const [creatingPelunasan, setCreatingPelunasan] = useState<string | number | null>(null)
+
   const handleMarkPaid = async (id: string | number) => {
     setMarkingPaid(id)
     try {
@@ -139,6 +145,19 @@ export default function InvoicesPage() {
       toast.error(e.message ?? 'Gagal menandai lunas')
     } finally {
       setMarkingPaid(null)
+    }
+  }
+
+  const handleCreatePelunasan = async (id: string | number) => {
+    setCreatingPelunasan(id)
+    try {
+      await apiFetch(`/admin/invoices/${id}/create-pelunasan`, { method: 'POST' })
+      fetchAll()
+      toast.success('Invoice Pelunasan 50% berhasil dibuat!')
+    } catch (e: any) {
+      toast.error(e.message ?? 'Gagal membuat invoice pelunasan')
+    } finally {
+      setCreatingPelunasan(null)
     }
   }
 
@@ -245,72 +264,99 @@ export default function InvoicesPage() {
                     </td>
                   </tr>
                 ) : (
-                  invoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-mono text-xs font-bold text-foreground">
-                        <div>{inv.invoice_number ?? `INV-${inv.id}`}</div>
-                        {inv.payment_proof && (
-                          <a
-                            href={`http://localhost:3001${inv.payment_proof}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold mt-1.5"
-                          >
-                            <span>Lihat Bukti ↗</span>
-                          </a>
-                        )}
-                      </td>
-                      <td className="p-4 font-semibold text-foreground">
-                        {inv.patient_name ?? patients.find((p) => p.id === inv.patient_id)?.nama_lengkap ?? `#${inv.patient_id}`}
-                      </td>
-                      <td className="p-4 font-semibold text-foreground">{formatRp(inv.total ?? 0)}</td>
-                      <td className="p-4 text-muted-foreground">
-                        {inv.due_date ? new Date(inv.due_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${STATUS_COLORS[inv.status] ?? ''}`}>
-                          {STATUS_LABELS[inv.status] ?? inv.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="inline-flex gap-2 items-center">
-                          {inv.invoice_token && (
+                  invoices.map((inv) => {
+                    const totalVal = inv.total ?? inv.total_amount ?? 0;
+                    const isDp = inv.payment_type === 'dp';
+                    const isPelunasan = inv.payment_type === 'pelunasan';
+
+                    return (
+                      <tr key={inv.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-4 font-mono text-xs font-bold text-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <span>{inv.invoice_number ?? `INV-${inv.id}`}</span>
+                            {isDp && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                DP 50%
+                              </span>
+                            )}
+                            {isPelunasan && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                PELUNASAN 50%
+                              </span>
+                            )}
+                          </div>
+                          {inv.payment_proof && (
                             <a
-                            href={`${import.meta.env.PROD ? 'https://alliakids.com' : 'http://localhost:9001'}/invoice/${inv.invoice_token}`}
+                              href={`http://localhost:3001${inv.payment_proof}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors"
+                              className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold mt-1.5"
                             >
-                              <ExternalLink size={11} /> Lihat
+                              <span>Lihat Bukti ↗</span>
                             </a>
                           )}
-                          {canManageInvoices && (
+                        </td>
+                        <td className="p-4 font-semibold text-foreground">
+                          {inv.patient_name ?? patients.find((p) => p.id === inv.patient_id)?.nama_lengkap ?? `#${inv.patient_id}`}
+                        </td>
+                        <td className="p-4 font-semibold text-foreground">{formatRp(totalVal)}</td>
+                        <td className="p-4 text-muted-foreground">
+                          {inv.due_date ? new Date(inv.due_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${STATUS_COLORS[inv.status] ?? ''}`}>
+                            {STATUS_LABELS[inv.status] ?? inv.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="inline-flex gap-2 items-center">
+                            {inv.invoice_token && (
+                              <a
+                                href={`${import.meta.env.PROD ? 'https://alliakids.com' : 'http://localhost:9001'}/invoice/${inv.invoice_token}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors"
+                              >
+                                <ExternalLink size={11} /> Lihat
+                              </a>
+                            )}
+                            {canManageInvoices && (
+                              <button
+                                onClick={() => handleMarkPaid(inv.id)}
+                                disabled={inv.status === 'sudah_bayar' || markingPaid === inv.id}
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all",
+                                  inv.status === 'menunggu_verifikasi'
+                                    ? "bg-orange-500 hover:bg-orange-600 border-orange-600 text-white shadow-sm shadow-orange-500/10 font-bold"
+                                    : "border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                )}
+                              >
+                                <CheckCircle size={12} />
+                                {markingPaid === inv.id 
+                                  ? '...' 
+                                  : inv.status === 'menunggu_verifikasi' 
+                                  ? 'Verifikasi Lunas' 
+                                  : 'Tandai Lunas'}
+                              </button>
+                            )}
+                            {canManageInvoices && isDp && inv.status === 'sudah_bayar' && (
+                              <button
+                                onClick={() => handleCreatePelunasan(inv.id)}
+                                disabled={creatingPelunasan === inv.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50"
+                                title="Buat Tagihan Pelunasan 50% Sisa"
+                              >
+                                {creatingPelunasan === inv.id ? 'Memproses...' : '+ Pelunasan (50%)'}
+                              </button>
+                            )}
                             <button
-                              onClick={() => handleMarkPaid(inv.id)}
-                              disabled={inv.status === 'sudah_bayar' || markingPaid === inv.id}
-                              className={cn(
-                                "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all",
-                                inv.status === 'menunggu_verifikasi'
-                                  ? "bg-orange-500 hover:bg-orange-600 border-orange-600 text-white shadow-sm shadow-orange-500/10 font-bold"
-                                  : "border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
-                              )}
+                              onClick={() => handleSendWa(inv.id)}
+                              disabled={sendingWa === inv.id}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-muted-foreground text-xs font-semibold hover:bg-muted disabled:opacity-40 transition-colors"
                             >
-                              <CheckCircle size={12} />
-                              {markingPaid === inv.id 
-                                ? '...' 
-                                : inv.status === 'menunggu_verifikasi' 
-                                ? 'Verifikasi Lunas' 
-                                : 'Tandai Lunas'}
+                              <Send size={12} />
+                              {sendingWa === inv.id ? '...' : 'Kirim WA'}
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleSendWa(inv.id)}
-                            disabled={sendingWa === inv.id}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-muted-foreground text-xs font-semibold hover:bg-muted disabled:opacity-40 transition-colors"
-                          >
-                            <Send size={12} />
-                            {sendingWa === inv.id ? '...' : 'Kirim WA'}
-                          </button>
                           {canManageInvoices && (
                             <button
                               onClick={() => setDeleteTarget(inv)}
@@ -325,7 +371,8 @@ export default function InvoicesPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

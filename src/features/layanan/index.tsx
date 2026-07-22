@@ -26,6 +26,8 @@ interface Layanan {
   kategori_name?: string
   image_url?: string
   is_active: boolean
+  allow_dp?: boolean
+  dp_percentage?: number
   stats?: {
     durasi_sesi?: string
     format_layanan?: string
@@ -67,6 +69,8 @@ const emptyLayananForm = {
   kategori_id: '',
   image_url: '',
   is_active: true,
+  allow_dp: true,
+  dp_percentage: 50,
   stats: { durasi_sesi: '', format_layanan: '', mulai_dari: '' },
   mengapa_memilih: [] as string[],
   isu_permasalahan: [] as string[],
@@ -165,6 +169,8 @@ export default function LayananPage() {
       kategori_id: l.kategori_id ? String(l.kategori_id) : '',
       image_url: l.image_url ?? '',
       is_active: l.is_active,
+      allow_dp: l.allow_dp ?? true,
+      dp_percentage: l.dp_percentage ?? 50,
       stats: { durasi_sesi: l.stats?.durasi_sesi ?? '', format_layanan: l.stats?.format_layanan ?? '', mulai_dari: l.stats?.mulai_dari ?? '' },
       mengapa_memilih: l.mengapa_memilih ?? [],
       isu_permasalahan: l.isu_permasalahan ?? [],
@@ -739,6 +745,28 @@ export default function LayananPage() {
                       <input type="date" value={layForm.promo_ends_at} onChange={(e) => setLayForm((f) => ({ ...f, promo_ends_at: e.target.value }))}
                         className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary" />
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* DP 50% Section */}
+              <div className="border-t border-border pt-4 mt-1 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide block">Opsi Pembayaran DP 50%</label>
+                    <span className="text-[10px] text-muted-foreground">Pasien dapat membayar DP 50% saat pendaftaran</span>
+                  </div>
+                  <button type="button" onClick={() => setLayForm((f) => ({ ...f, allow_dp: !f.allow_dp }))}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${layForm.allow_dp ? 'bg-primary' : 'bg-muted'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${layForm.allow_dp ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+                {layForm.allow_dp && (
+                  <div className="flex flex-col gap-1.5 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                    <label className="text-xs font-bold text-primary uppercase tracking-wide">Persentase DP (%)</label>
+                    <input type="number" min="10" max="90" value={layForm.dp_percentage} onChange={(e) => setLayForm((f) => ({ ...f, dp_percentage: Number(e.target.value) }))}
+                      placeholder="50" className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+                    <span className="text-[10px] text-muted-foreground">Default 50%. Sisa {100 - (layForm.dp_percentage || 50)}% dapat dilunasi saat sesi terapi.</span>
                   </div>
                 )}
               </div>
