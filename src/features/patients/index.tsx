@@ -154,6 +154,83 @@ export function Patients() {
   const [filterStatus, setFilterStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
+  const [patientLogs, setPatientLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [savingLog, setSavingLog] = useState(false);
+  const [logForm, setLogForm] = useState({
+    session_number: 1,
+    total_sessions: 8,
+    session_date: new Date().toISOString().slice(0, 10),
+    fokus_latihan: "",
+    progress_score: 80,
+    aspect_scores: {
+      atensi_fokus: 80,
+      artikulasi_wicara: 75,
+      regulasi_emosi: 85,
+      kepatuhan_instruksi: 70,
+      sosialisasi: 80,
+    },
+    catatan_terapis: "",
+    rekomendasi_ortu: "",
+    status_pencapaian: "sesuai_target",
+  });
+
+  const fetchPatientLogs = async (patientId: string | number) => {
+    setLoadingLogs(true);
+    try {
+      if (typeof patientId === "number" || (!String(patientId).startsWith("demo") && !String(patientId).startsWith("local"))) {
+        const logs = await api.get<any[]>(`/admin/therapy-progress/patient/${patientId}`);
+        setPatientLogs(logs || []);
+        if (logs && logs.length > 0) {
+          const maxSesi = Math.max(...logs.map((l: any) => l.session_number || 0));
+          setLogForm((f) => ({ ...f, session_number: maxSesi + 1 }));
+        }
+      } else {
+        const localKey = `progress_logs_${patientId}`;
+        const localLogs = JSON.parse(localStorage.getItem(localKey) || "[]");
+        setPatientLogs(localLogs);
+        if (localLogs.length > 0) {
+          const maxSesi = Math.max(...localLogs.map((l: any) => l.session_number || 0));
+          setLogForm((f) => ({ ...f, session_number: maxSesi + 1 }));
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch therapy progress logs", err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const handleSaveLog = async () => {
+    if (!selectedPatient) return;
+    setSavingLog(true);
+    try {
+      const payload = {
+        patient_id: typeof selectedPatient.id === "number" ? selectedPatient.id : 1,
+        therapist_id: selectedPatient.therapist_id || undefined,
+        program_name: selectedPatient.jenis_terapi || "Program Terapi Wicara & Perilaku",
+        ...logForm,
+      };
+
+      if (typeof selectedPatient.id === "number" || (!String(selectedPatient.id).startsWith("demo") && !String(selectedPatient.id).startsWith("local"))) {
+        await api.post("/admin/therapy-progress", payload);
+      } else {
+        const localKey = `progress_logs_${selectedPatient.id}`;
+        const localLogs = JSON.parse(localStorage.getItem(localKey) || "[]");
+        localLogs.push({ ...payload, id: Date.now(), created_at: new Date().toISOString() });
+        localStorage.setItem(localKey, JSON.stringify(localLogs));
+      }
+      alert("Log perkembangan sesi berhasil disimpan!");
+      fetchPatientLogs(selectedPatient.id);
+    } catch (err: any) {
+      console.error(err);
+      alert("Gagal menyimpan progress: " + (err.message || err));
+    } finally {
+      setSavingLog(false);
+    }
+  };
+
   const fetchTherapists = async () => {
     try {
       const data = await api.get<TherapistItem[]>("/therapists");
@@ -528,12 +605,24 @@ export function Patients() {
                     {(selectedPatient.jenis_terapi || "").toLowerCase().includes("wicara") ? "🗣️ Terapi Wicara" : "🧠 Hipoterapi"}
                   </p>
                 </div>
-                <button
-                  onClick={() => setSelectedPatient(null)}
-                  className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      fetchPatientLogs(selectedPatient.id);
+                      setProgressModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground hover:brightness-110 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow transition-all cursor-pointer"
+                  >
+                    📊 Progress & Milestone Sesi
+                  </button>
+                  <button
+                    onClick={() => setSelectedPatient(null)}
+                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
 
               {/* Status & Dynamic Therapist Admin Assignment Controls */}
@@ -840,6 +929,244 @@ export function Patients() {
 
         </div>
       </Main>
+
+      {/* ================= Progress & Milestone Modal ================= */}
+      {progressModalOpen && selectedPatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 flex flex-col gap-6 relative">
+            <div className="flex justify-between items-start border-b border-border pb-4">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary">Progress Tracking System</span>
+                <h3 className="text-xl font-bold text-foreground mt-0.5">
+                  Record Sesi & Milestone: {selectedPatient.nama_lengkap}
+                </h3>
+                <p className="text-xs text-muted-foreground font-medium">
+                  Input evaluasi perkembangan per sesi agar orang tua dapat memantau grafik milestone anak di Patient Portal.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProgressModalOpen(false)}
+                className="p-1 rounded-md hover:bg-muted text-muted-foreground"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Existing Recorded Sessions */}
+            <div className="flex flex-col gap-3">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                📋 Riwayat Sesi Terdaftar ({patientLogs.length} Sesi Recorded)
+              </h4>
+              {loadingLogs ? (
+                <div className="text-xs text-muted-foreground italic p-3">Memuat riwayat sesi...</div>
+              ) : patientLogs.length === 0 ? (
+                <div className="text-xs text-muted-foreground italic bg-muted/40 p-4 rounded-xl text-center">
+                  Belum ada log sesi tercatat. Silakan input sesi pertama di bawah ini.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                  {patientLogs.map((log: any, idx: number) => (
+                    <div key={log.id || idx} className="bg-muted/40 border border-border rounded-xl p-3.5 flex flex-col gap-1.5 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="font-extrabold text-primary">Sesi #{log.session_number} dari {log.total_sessions}</span>
+                        <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">
+                          Score: {log.progress_score}%
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-semibold">Tanggal: {log.session_date || '—'}</span>
+                      <p className="font-bold text-foreground line-clamp-1">🎯 {log.fokus_latihan || 'Latihan Stimulasi'}</p>
+                      {log.catatan_terapis && <p className="text-muted-foreground italic text-[11px] line-clamp-2">💬 "{log.catatan_terapis}"</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Input Form for New Session */}
+            <div className="border-t border-border pt-4 flex flex-col gap-4 bg-muted/20 p-5 rounded-xl border">
+              <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                ✏️ Form Input Progress Sesi Baru
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Sesi Ke-</label>
+                  <input
+                    type="number"
+                    value={logForm.session_number}
+                    onChange={(e) => setLogForm((f) => ({ ...f, session_number: Number(e.target.value) }))}
+                    className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Total Sesi Paket</label>
+                  <input
+                    type="number"
+                    value={logForm.total_sessions}
+                    onChange={(e) => setLogForm((f) => ({ ...f, total_sessions: Number(e.target.value) }))}
+                    className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Tanggal Sesi</label>
+                  <input
+                    type="date"
+                    value={logForm.session_date}
+                    onChange={(e) => setLogForm((f) => ({ ...f, session_date: e.target.value }))}
+                    className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">Fokus Latihan / Pembelajaran Sesi Ini</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Stimulasi Kontak Mata & Artikulasi Kata Huruf R"
+                  value={logForm.fokus_latihan}
+                  onChange={(e) => setLogForm((f) => ({ ...f, fokus_latihan: e.target.value }))}
+                  className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-semibold mt-1"
+                />
+              </div>
+
+              {/* Overall Progress Score */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Skor Evaluasi Sesi Overall ({logForm.progress_score}%)</label>
+                  <span className="text-xs font-black text-primary">{logForm.progress_score}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={logForm.progress_score}
+                  onChange={(e) => setLogForm((f) => ({ ...f, progress_score: Number(e.target.value) }))}
+                  className="w-full accent-primary cursor-pointer"
+                />
+              </div>
+
+              {/* Aspect Scores Breakdown */}
+              <div className="flex flex-col gap-2 bg-background p-3 rounded-lg border border-border">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Breakdown Skor Aspek Tumbuh Kembang (0-100%):</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <div className="flex justify-between">
+                      <span>👁️ Atensi & Fokus:</span>
+                      <span className="font-bold">{logForm.aspect_scores.atensi_fokus}%</span>
+                    </div>
+                    <input
+                      type="range" min={0} max={100}
+                      value={logForm.aspect_scores.atensi_fokus}
+                      onChange={(e) => setLogForm((f) => ({ ...f, aspect_scores: { ...f.aspect_scores, atensi_fokus: Number(e.target.value) } }))}
+                      className="w-full accent-blue-600"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between">
+                      <span>🗣️ Artikulasi & Wicara:</span>
+                      <span className="font-bold">{logForm.aspect_scores.artikulasi_wicara}%</span>
+                    </div>
+                    <input
+                      type="range" min={0} max={100}
+                      value={logForm.aspect_scores.artikulasi_wicara}
+                      onChange={(e) => setLogForm((f) => ({ ...f, aspect_scores: { ...f.aspect_scores, artikulasi_wicara: Number(e.target.value) } }))}
+                      className="w-full accent-emerald-600"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between">
+                      <span>💖 Regulasi Emosi:</span>
+                      <span className="font-bold">{logForm.aspect_scores.regulasi_emosi}%</span>
+                    </div>
+                    <input
+                      type="range" min={0} max={100}
+                      value={logForm.aspect_scores.regulasi_emosi}
+                      onChange={(e) => setLogForm((f) => ({ ...f, aspect_scores: { ...f.aspect_scores, regulasi_emosi: Number(e.target.value) } }))}
+                      className="w-full accent-purple-600"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between">
+                      <span>📝 Kepatuhan Instruksi:</span>
+                      <span className="font-bold">{logForm.aspect_scores.kepatuhan_instruksi}%</span>
+                    </div>
+                    <input
+                      type="range" min={0} max={100}
+                      value={logForm.aspect_scores.kepatuhan_instruksi}
+                      onChange={(e) => setLogForm((f) => ({ ...f, aspect_scores: { ...f.aspect_scores, kepatuhan_instruksi: Number(e.target.value) } }))}
+                      className="w-full accent-amber-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Text Notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Catatan Evaluasi Terapis</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Evaluasi lengkap hasil stimulasi terapis selama sesi berlangsung..."
+                    value={logForm.catatan_terapis}
+                    onChange={(e) => setLogForm((f) => ({ ...f, catatan_terapis: e.target.value }))}
+                    className="w-full bg-background border border-input rounded-md p-2.5 text-xs focus:outline-none focus:border-primary resize-none mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Rekomendasi Latihan di Rumah (PR Ortu)</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Instruksi latihan atau kegiatan yang perlu dilakukan orang tua di rumah..."
+                    value={logForm.rekomendasi_ortu}
+                    onChange={(e) => setLogForm((f) => ({ ...f, rekomendasi_ortu: e.target.value }))}
+                    className="w-full bg-background border border-input rounded-md p-2.5 text-xs focus:outline-none focus:border-primary resize-none mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* Status Milestone */}
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">Status Pencapaian Milestone</label>
+                <div className="flex gap-2 mt-1">
+                  {[
+                    { key: "sesuai_target", label: "✅ Sesuai Target" },
+                    { key: "melampaui_target", label: "🌟 Melampaui Target" },
+                    { key: "perlu_pembiasaan", label: "🔄 Perlu Pembiasaan" },
+                  ].map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setLogForm((f) => ({ ...f, status_pencapaian: item.key }))}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
+                        logForm.status_pencapaian === item.key
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-background border-input text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action */}
+              <button
+                type="button"
+                onClick={handleSaveLog}
+                disabled={savingLog}
+                className="mt-2 bg-primary hover:brightness-110 text-primary-foreground font-bold py-2.5 px-4 rounded-xl text-xs shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {savingLog ? "Memproses Simpan..." : "💾 Simpan Progress Sesi Terapi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -74,7 +74,7 @@ const emptyLayananForm = {
   stats: { durasi_sesi: '', format_layanan: '', mulai_dari: '' },
   mengapa_memilih: [] as string[],
   isu_permasalahan: [] as string[],
-  programs: [] as Array<{ title: string; desc: string; harga: string }>,
+  programs: [] as Array<{ title: string; desc: string; harga: string; total_sesi?: number }>,
   promo_active: false,
   promo_label: '',
   promo_price: '',
@@ -182,6 +182,7 @@ export default function LayananPage() {
         title: p.title ?? '',
         desc: p.desc ?? p.description ?? '',
         harga: p.harga ?? p.price ?? '',
+        total_sesi: p.total_sesi ?? p.totalSessions ?? 8,
       })),
       promo_active: l.promo_active ?? false,
       promo_label: l.promo_label ?? '',
@@ -315,8 +316,8 @@ export default function LayananPage() {
   const updateIsu = (i: number, v: string) => setLayForm((f) => { const a = [...f.isu_permasalahan]; a[i] = v; return { ...f, isu_permasalahan: a } })
   const removeIsu = (i: number) => setLayForm((f) => ({ ...f, isu_permasalahan: f.isu_permasalahan.filter((_, idx) => idx !== i) }))
 
-  const addProgram = () => setLayForm((f) => ({ ...f, programs: [...f.programs, { title: '', desc: '', harga: '' }] }))
-  const updateProgram = (i: number, field: 'title' | 'desc' | 'harga', v: string) => setLayForm((f) => {
+  const addProgram = () => setLayForm((f) => ({ ...f, programs: [...f.programs, { title: '', desc: '', harga: '', total_sesi: 8 }] }))
+  const updateProgram = (i: number, field: 'title' | 'desc' | 'harga' | 'total_sesi', v: any) => setLayForm((f) => {
     const a = [...f.programs];
     a[i] = { ...a[i], [field]: v };
     return { ...f, programs: a };
@@ -749,19 +750,29 @@ export default function LayananPage() {
                           <Trash2 size={13} /> Hapus
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <input
                           value={p.title}
                           onChange={(e) => updateProgram(i, 'title', e.target.value)}
                           placeholder="Judul Program (Misal: Paket 8 Sesi)"
-                          className="bg-background border border-input rounded-md px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-primary"
+                          className="bg-background border border-input rounded-md px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-primary col-span-1"
                         />
                         <input
                           value={p.harga}
                           onChange={(e) => updateProgram(i, 'harga', e.target.value)}
                           placeholder="Harga (Misal: Rp 3.500.000)"
-                          className="bg-background border border-input rounded-md px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-primary"
+                          className="bg-background border border-input rounded-md px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-primary col-span-1"
                         />
+                        <div className="flex items-center gap-1 bg-background border border-input rounded-md px-2 col-span-1">
+                          <span className="text-[10px] text-muted-foreground font-bold whitespace-nowrap">Total Sesi:</span>
+                          <input
+                            type="number"
+                            value={p.total_sesi ?? 8}
+                            onChange={(e) => updateProgram(i, 'total_sesi', Number(e.target.value))}
+                            placeholder="8"
+                            className="w-full bg-transparent text-xs font-bold focus:outline-none"
+                          />
+                        </div>
                       </div>
                       <input
                         value={p.desc}
