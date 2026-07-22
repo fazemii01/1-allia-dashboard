@@ -74,7 +74,7 @@ const emptyLayananForm = {
   stats: { durasi_sesi: '', format_layanan: '', mulai_dari: '' },
   mengapa_memilih: [] as string[],
   isu_permasalahan: [] as string[],
-  programs_json: '[]',
+  programs: [] as Array<{ title: string; desc: string; harga: string }>,
   promo_active: false,
   promo_label: '',
   promo_price: '',
@@ -162,6 +162,10 @@ export default function LayananPage() {
   const openLayAdd = () => { setLayEditTarget(null); setLayForm(emptyLayananForm); setLayDialogOpen(true) }
   const openLayEdit = (l: Layanan) => {
     setLayEditTarget(l)
+    const rawProgs = Array.isArray(l.programs) 
+      ? l.programs 
+      : (typeof l.programs === 'string' ? (() => { try { return JSON.parse(l.programs) } catch { return [] } })() : []);
+
     setLayForm({
       title: l.title,
       slug: l.slug,
@@ -174,7 +178,11 @@ export default function LayananPage() {
       stats: { durasi_sesi: l.stats?.durasi_sesi ?? '', format_layanan: l.stats?.format_layanan ?? '', mulai_dari: l.stats?.mulai_dari ?? '' },
       mengapa_memilih: l.mengapa_memilih ?? [],
       isu_permasalahan: l.isu_permasalahan ?? [],
-      programs_json: JSON.stringify(l.programs ?? [], null, 2),
+      programs: rawProgs.map((p: any) => ({
+        title: p.title ?? '',
+        desc: p.desc ?? p.description ?? '',
+        harga: p.harga ?? p.price ?? '',
+      })),
       promo_active: l.promo_active ?? false,
       promo_label: l.promo_label ?? '',
       promo_price: l.promo_price ?? '',
@@ -187,7 +195,7 @@ export default function LayananPage() {
     try {
       const payload = {
         ...layForm,
-        programs: (() => { try { return JSON.parse(layForm.programs_json) } catch { return [] } })(),
+        programs: layForm.programs,
         promo_ends_at: layForm.promo_ends_at ? new Date(layForm.promo_ends_at).toISOString() : null,
       }
       if (layEditTarget) {
@@ -306,6 +314,14 @@ export default function LayananPage() {
   const addIsu = () => setLayForm((f) => ({ ...f, isu_permasalahan: [...f.isu_permasalahan, ''] }))
   const updateIsu = (i: number, v: string) => setLayForm((f) => { const a = [...f.isu_permasalahan]; a[i] = v; return { ...f, isu_permasalahan: a } })
   const removeIsu = (i: number) => setLayForm((f) => ({ ...f, isu_permasalahan: f.isu_permasalahan.filter((_, idx) => idx !== i) }))
+
+  const addProgram = () => setLayForm((f) => ({ ...f, programs: [...f.programs, { title: '', desc: '', harga: '' }] }))
+  const updateProgram = (i: number, field: 'title' | 'desc' | 'harga', v: string) => setLayForm((f) => {
+    const a = [...f.programs];
+    a[i] = { ...a[i], [field]: v };
+    return { ...f, programs: a };
+  })
+  const removeProgram = (i: number) => setLayForm((f) => ({ ...f, programs: f.programs.filter((_, idx) => idx !== i) }))
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -711,11 +727,51 @@ export default function LayananPage() {
                 ))}
                 <button onClick={addIsu} className="text-xs font-semibold text-primary hover:text-primary/80 self-start">+ Tambah Isu</button>
               </div>
-              {/* Programs JSON */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Programs (JSON)</label>
-                <textarea value={layForm.programs_json} onChange={(e) => setLayForm((f) => ({ ...f, programs_json: e.target.value }))}
-                  rows={4} className="bg-background border border-input rounded-md px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:border-primary" />
+              {/* Daftar Program Spesifik */}
+              <div className="flex flex-col gap-2 border-t border-border pt-3 mt-1">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Daftar Paket / Program Spesifik ({layForm.programs.length})</label>
+                  <button type="button" onClick={addProgram} className="text-xs font-bold text-primary hover:underline">
+                    + Tambah Program
+                  </button>
+                </div>
+
+                {layForm.programs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic bg-muted/30 p-3 rounded-md text-center">
+                    Belum ada sub-program. Klik "+ Tambah Program" untuk menambahkan paket program spesifik.
+                  </p>
+                ) : (
+                  layForm.programs.map((p, i) => (
+                    <div key={i} className="flex flex-col gap-2 bg-muted/30 p-3 rounded-lg border border-border relative">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Program Paket #{i + 1}</span>
+                        <button type="button" onClick={() => removeProgram(i)} className="text-destructive hover:text-destructive/80 text-xs font-bold flex items-center gap-1">
+                          <Trash2 size={13} /> Hapus
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          value={p.title}
+                          onChange={(e) => updateProgram(i, 'title', e.target.value)}
+                          placeholder="Judul Program (Misal: Paket 8 Sesi)"
+                          className="bg-background border border-input rounded-md px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-primary"
+                        />
+                        <input
+                          value={p.harga}
+                          onChange={(e) => updateProgram(i, 'harga', e.target.value)}
+                          placeholder="Harga (Misal: Rp 3.500.000)"
+                          className="bg-background border border-input rounded-md px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                      <input
+                        value={p.desc}
+                        onChange={(e) => updateProgram(i, 'desc', e.target.value)}
+                        placeholder="Deskripsi singkat program..."
+                        className="bg-background border border-input rounded-md px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                  ))
+                )}
               </div>
               {/* Promo Section */}
               <div className="border-t border-border pt-4 mt-2 flex flex-col gap-3">
