@@ -42,6 +42,8 @@ interface Invoice {
   dp_percentage?: number
   total?: number
   total_amount?: number
+  full_amount?: number
+  payment_method?: string
   line_items?: LineItem[]
   payment_proof?: string
 }
@@ -299,7 +301,19 @@ export default function InvoicesPage() {
                         <td className="p-4 font-semibold text-foreground">
                           {inv.patient_name ?? patients.find((p) => p.id === inv.patient_id)?.nama_lengkap ?? `#${inv.patient_id}`}
                         </td>
-                        <td className="p-4 font-semibold text-foreground">{formatRp(totalVal)}</td>
+                        <td className="p-4 font-semibold text-foreground">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-primary">{formatRp(totalVal)}</span>
+                            {inv.full_amount && Number(inv.full_amount) !== totalVal && (
+                              <span className="text-[11px] text-muted-foreground line-through font-mono">
+                                100%: {formatRp(Number(inv.full_amount))}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                              Metode: {inv.payment_method === 'cash' ? '💵 Tunai / Cash' : '💳 Transfer Bank'}
+                            </span>
+                          </div>
+                        </td>
                         <td className="p-4 text-muted-foreground">
                           {inv.due_date ? new Date(inv.due_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                         </td>
