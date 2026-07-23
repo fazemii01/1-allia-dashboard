@@ -256,7 +256,13 @@ export function Patients() {
   const fetchPatients = async () => {
     setLoading(true);
     try {
-      const data = await api.get<Patient[]>("/patients");
+      let data: Patient[] = [];
+      try {
+        data = await api.get<Patient[]>("/admin/patients");
+      } catch {
+        data = await api.get<Patient[]>("/patients");
+      }
+
       const localApplies = JSON.parse(localStorage.getItem("pending_applies") || "[]");
       
       const formattedLocal: Patient[] = localApplies.map((app: any) => ({
@@ -318,13 +324,13 @@ export function Patients() {
         } : undefined,
       }));
 
-      if (data && data.length > 0) {
+      if (data && Array.isArray(data)) {
         setPatients([...data, ...formattedLocal]);
       } else {
-        setPatients([...mockPatients, ...formattedLocal]);
+        setPatients(formattedLocal);
       }
     } catch (err) {
-      console.warn("Using local/mock data fallback for patients list", err);
+      console.warn("Error fetching patients list from backend API", err);
       const localApplies = JSON.parse(localStorage.getItem("pending_applies") || "[]");
       const formattedLocal: Patient[] = localApplies.map((app: any) => ({
         id: `local-${app.id}`,
@@ -345,7 +351,7 @@ export function Patients() {
         relasi_dengan_saudara: app.relasi_dengan_saudara,
         status: "baru",
       }));
-      setPatients([...mockPatients, ...formattedLocal]);
+      setPatients(formattedLocal);
     } finally {
       setLoading(false);
     }
