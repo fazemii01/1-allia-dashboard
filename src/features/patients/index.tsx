@@ -5,6 +5,7 @@ import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { Search, Eye, Filter, AlertCircle, MessageSquare, RefreshCw, X, FileText, User, HeartHandshake } from "lucide-react";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface TherapistItem {
   id: number;
@@ -221,11 +222,11 @@ export function Patients() {
         localLogs.push({ ...payload, id: Date.now(), created_at: new Date().toISOString() });
         localStorage.setItem(localKey, JSON.stringify(localLogs));
       }
-      alert("Log perkembangan sesi berhasil disimpan!");
+      toast.success("Log perkembangan sesi berhasil disimpan!");
       fetchPatientLogs(selectedPatient.id);
     } catch (err: any) {
       console.error(err);
-      alert("Gagal menyimpan progress: " + (err.message || err));
+      toast.error("Gagal menyimpan progress: " + (err.message || err));
     } finally {
       setSavingLog(false);
     }
