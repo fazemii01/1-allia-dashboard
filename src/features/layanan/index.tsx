@@ -194,10 +194,15 @@ export default function LayananPage() {
   const handleLaySave = async () => {
     setLaySaving(true)
     try {
-      const payload = {
+      const payload: any = {
         ...layForm,
+        kategori_id: layForm.kategori_id ? Number(layForm.kategori_id) : undefined,
+        dp_percentage: Number(layForm.dp_percentage) || 50,
         programs: layForm.programs,
-        promo_ends_at: layForm.promo_ends_at ? new Date(layForm.promo_ends_at).toISOString() : null,
+        promo_ends_at: layForm.promo_ends_at ? new Date(layForm.promo_ends_at).toISOString() : undefined,
+      }
+      if (!payload.slug || payload.slug.trim() === '') {
+        delete payload.slug
       }
       if (layEditTarget) {
         await apiFetch(`/admin/layanan/${layEditTarget.id}`, { method: 'PATCH', body: JSON.stringify(payload) })
