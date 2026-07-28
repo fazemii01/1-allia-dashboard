@@ -146,6 +146,22 @@ const mockPatients: Patient[] = [
   }
 ];
 
+const getProgramTerapiLabel = (jenis_terapi?: string) => {
+  if (!jenis_terapi) return "🩺 Program Terapi";
+  if (jenis_terapi === "terapi_wicara") return "🗣️ Terapi Wicara";
+  if (jenis_terapi === "hipoterapi") return "🧠 Hipoterapi";
+
+  const lower = jenis_terapi.toLowerCase();
+  let icon = "🩺";
+  if (lower.includes("wicara")) icon = "🗣️";
+  else if (lower.includes("hipo") || lower.includes("fobia") || lower.includes("emosi")) icon = "🧠";
+  else if (lower.includes("konsultasi")) icon = "💬";
+  else if (lower.includes("tumbuh") || lower.includes("skrining")) icon = "📏";
+  else if (lower.includes("sidik") || lower.includes("jari") || lower.includes("bakat")) icon = "👆";
+
+  return `${icon} ${jenis_terapi}`;
+};
+
 export function Patients() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [therapists, setTherapists] = useState<TherapistItem[]>([]);
@@ -210,7 +226,7 @@ export function Patients() {
       const payload = {
         patient_id: typeof selectedPatient.id === "number" ? selectedPatient.id : 1,
         therapist_id: selectedPatient.therapist_id || undefined,
-        program_name: selectedPatient.jenis_terapi || "Program Terapi Wicara & Perilaku",
+        program_name: selectedPatient.jenis_terapi || "Program Terapi & Stimulasi",
         ...logForm,
       };
 
@@ -509,8 +525,11 @@ export function Patients() {
             className="bg-background border border-input rounded-md px-3 py-1.5 text-sm"
           >
             <option value="">Semua Program Terapi</option>
-            <option value="wicara">🗣️ Terapi Wicara</option>
-            <option value="hipo">🧠 Hipoterapi</option>
+            {Array.from(new Set(patients.map((p) => p.jenis_terapi).filter(Boolean))).map((opt) => (
+              <option key={opt} value={opt}>
+                {getProgramTerapiLabel(opt)}
+              </option>
+            ))}
           </select>
 
           <select
@@ -568,7 +587,7 @@ export function Patients() {
                               <div className="text-xs text-muted-foreground">{p.no_telepon || "-"}</div>
                             </td>
                             <td className="p-3.5 font-semibold text-foreground text-xs">
-                              {isWicara ? "🗣️ Terapi Wicara" : "🧠 Hipoterapi"}
+                              {getProgramTerapiLabel(p.jenis_terapi)}
                             </td>
                             <td className="p-3.5">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${getStatusBadge(p.status)}`}>
@@ -609,7 +628,7 @@ export function Patients() {
                     </span>
                   </div>
                   <p className="text-xs text-primary font-bold uppercase tracking-wider mt-1">
-                    {(selectedPatient.jenis_terapi || "").toLowerCase().includes("wicara") ? "🗣️ Terapi Wicara" : "🧠 Hipoterapi"}
+                    {getProgramTerapiLabel(selectedPatient.jenis_terapi)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -845,7 +864,9 @@ export function Patients() {
                 {/* Render Hipoterapi Form Data */}
                 {(!((selectedPatient.jenis_terapi || "").toLowerCase().includes("wicara")) || selectedPatient.formulir_hipoterapi) && (
                   <div className="flex flex-col gap-3 text-xs bg-muted/20 p-4 rounded-xl border border-border">
-                    <div className="font-bold text-xs text-primary">Detail Formulir Hipoterapi</div>
+                    <div className="font-bold text-xs text-primary">
+                      Detail Formulir {selectedPatient.jenis_terapi === "hipoterapi" ? "Hipoterapi" : selectedPatient.jenis_terapi || "Evaluasi Terapi"}
+                    </div>
 
                     <div>
                       <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Keluhan Utama Emosi / Perilaku</span>
