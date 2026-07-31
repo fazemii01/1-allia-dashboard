@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { MonthlyReportSection } from './components/monthly-report'
 
 interface Patient {
   id: string | number
@@ -37,9 +38,10 @@ interface Invoice {
   appointment_id?: string | number
   due_date: string
   status: 'belum_bayar' | 'sudah_bayar' | 'jatuh_tempo' | 'menunggu_verifikasi'
-  payment_type?: 'full' | 'dp' | 'pelunasan' | string
+  payment_type?: 'full' | 'dp' | 'pelunasan' | 'custom' | string
   parent_invoice_id?: string | number
   dp_percentage?: number
+  installment_no?: number
   total?: number
   total_amount?: number
   full_amount?: number
@@ -155,9 +157,9 @@ export default function InvoicesPage() {
     try {
       await apiFetch(`/admin/invoices/${id}/create-pelunasan`, { method: 'POST' })
       fetchAll()
-      toast.success('Invoice Pelunasan 50% berhasil dibuat!')
+      toast.success('Invoice Cicilan Ke-2 berhasil dibuat!')
     } catch (e: any) {
-      toast.error(e.message ?? 'Gagal membuat invoice pelunasan')
+      toast.error(e.message ?? 'Gagal membuat invoice cicilan ke-2')
     } finally {
       setCreatingPelunasan(null)
     }
@@ -209,6 +211,25 @@ export default function InvoicesPage() {
     setDialogOpen(true)
   }
 
+  const enrichedInvoices = React.useMemo(() => {
+    return invoices.map((inv: any) => {
+      const matchedPatient = patients.find(
+        (p) => String(p.id) === String(inv.patient_id)
+      )
+      const patientName =
+        inv.patient_name ||
+        inv.patient?.nama_lengkap ||
+        inv.patient?.name ||
+        matchedPatient?.nama_lengkap ||
+        (inv.patient_id ? `#${inv.patient_id}` : '-')
+
+      return {
+        ...inv,
+        patient_name: patientName,
+      }
+    })
+  }, [invoices, patients])
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header fixed>
@@ -237,6 +258,9 @@ export default function InvoicesPage() {
           <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg p-4 text-sm font-medium">{error}</div>
         )}
 
+        {/* Monthly Analytics & Excel Exporter Section */}
+        <MonthlyReportSection invoices={enrichedInvoices} />
+
         <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -259,57 +283,81 @@ export default function InvoicesPage() {
                       ))}
                     </tr>
                   ))
-                ) : invoices.length === 0 ? (
+                ) : enrichedInvoices.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-12 text-center text-muted-foreground font-semibold">
                       <div className="flex flex-col items-center gap-2"><Receipt size={32} className="opacity-30" />Belum ada data invoice</div>
                     </td>
                   </tr>
                 ) : (
-                  invoices.map((inv) => {
+                  enrichedInvoices.map((inv) => {
                     const totalVal = inv.total ?? inv.total_amount ?? 0;
                     const isDp = inv.payment_type === 'dp';
+                    const isCustomPayment = inv.payment_type === 'custom';
                     const isPelunasan = inv.payment_type === 'pelunasan';
+                    const isInstallment = isDp || isCustomPayment;
+                    const dpPercent = inv.dp_percentage ?? (isDp ? 50 : 0);
+                    const fullAmt = Number(inv.full_amount) || 0;
+                    const remainingAmt = fullAmt > 0 ? Math.max(0, fullAmt - totalVal) : 0;
 
                     return (
                       <tr key={inv.id} className="hover:bg-muted/30 transition-colors">
                         <td className="p-4 font-mono text-xs font-bold text-foreground">
-                          <div className="flex items-center gap-1.5">
-                            <span>{inv.invoice_number ?? `INV-${inv.id}`}</span>
-                            {isDp && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                                DP 50%
-                              </span>
-                            )}
-                            {isPelunasan && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                                PELUNASAN 50%
-                              </span>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>{inv.invoice_number ?? `INV-${inv.id}`}</span>
+                              {isDp && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                  DP {dpPercent}%
+                                </span>
+                              )}
+                              {isCustomPayment && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                  CUSTOM {dpPercent}%
+                                </span>
+                              )}
+                              {isPelunasan && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                                  PELUNASAN {inv.dp_percentage ?? 50}%
+                                </span>
+                              )}
+                              {inv.installment_no && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  Cicilan {inv.installment_no}/2
+                                </span>
+                              )}
+                            </div>
+                            {inv.payment_proof && (
+                              <a
+                                href={inv.payment_proof.startsWith('http') ? inv.payment_proof : `${(import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '')}${inv.payment_proof.startsWith('/') ? '' : '/'}${inv.payment_proof}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold"
+                              >
+                                <span>Lihat Bukti ↗</span>
+                              </a>
                             )}
                           </div>
-                          {inv.payment_proof && (
-                            <a
-                              href={`http://localhost:3001${inv.payment_proof}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold mt-1.5"
-                            >
-                              <span>Lihat Bukti ↗</span>
-                            </a>
-                          )}
                         </td>
                         <td className="p-4 font-semibold text-foreground">
-                          {inv.patient_name ?? patients.find((p) => p.id === inv.patient_id)?.nama_lengkap ?? `#${inv.patient_id}`}
+                          {inv.patient_name}
                         </td>
                         <td className="p-4 font-semibold text-foreground">
-                          <div className="flex flex-col">
+                          <div className="flex flex-col gap-0.5">
                             <span className="text-sm font-bold text-primary">{formatRp(totalVal)}</span>
-                            {inv.full_amount && Number(inv.full_amount) !== totalVal && (
-                              <span className="text-[11px] text-muted-foreground line-through font-mono">
-                                100%: {formatRp(Number(inv.full_amount))}
+                            {/* Remaining balance for installment invoices */}
+                            {isInstallment && remainingAmt > 0 && (
+                              <span className="text-[10px] font-bold text-orange-600">
+                                Sisa: {formatRp(remainingAmt)}
                               </span>
                             )}
-                            <span className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                            {/* Full price with strikethrough */}
+                            {fullAmt > 0 && fullAmt !== totalVal && (
+                              <span className="text-[10px] text-muted-foreground line-through font-mono">
+                                Total: {formatRp(fullAmt)}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground font-medium">
                               Metode: {inv.payment_method === 'cash' ? '💵 Tunai / Cash' : '💳 Transfer Bank'}
                             </span>
                           </div>
@@ -323,10 +371,10 @@ export default function InvoicesPage() {
                           </span>
                         </td>
                         <td className="p-4 text-right">
-                          <div className="inline-flex gap-2 items-center">
+                          <div className="inline-flex gap-2 items-center flex-wrap justify-end">
                             {inv.invoice_token && (
                               <a
-                                href={`${import.meta.env.PROD ? 'https://alliakids.com' : 'http://localhost:9001'}/invoice/${inv.invoice_token}`}
+                                href={`${import.meta.env.VITE_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/invoice/${inv.invoice_token}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors"
@@ -353,14 +401,16 @@ export default function InvoicesPage() {
                                   : 'Tandai Lunas'}
                               </button>
                             )}
-                            {canManageInvoices && isDp && inv.status === 'sudah_bayar' && (
+                            {/* Manual fallback: create 2nd installment if auto-create missed */}
+                            {canManageInvoices && isInstallment && inv.status === 'sudah_bayar'
+                              && !inv.parent_invoice_id && remainingAmt > 0 && (
                               <button
                                 onClick={() => handleCreatePelunasan(inv.id)}
                                 disabled={creatingPelunasan === inv.id}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50"
-                                title="Buat Tagihan Pelunasan 50% Sisa"
+                                title={`Buat Cicilan Ke-2: ${formatRp(remainingAmt)}`}
                               >
-                                {creatingPelunasan === inv.id ? 'Memproses...' : '+ Pelunasan (50%)'}
+                                {creatingPelunasan === inv.id ? 'Memproses...' : `+ Cicilan Ke-2 (${formatRp(remainingAmt)})`}
                               </button>
                             )}
                             <button

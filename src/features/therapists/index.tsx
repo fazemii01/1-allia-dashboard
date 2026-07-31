@@ -28,9 +28,11 @@ const emptyForm: Omit<Therapist, 'id'> = {
 
 function resolveUrl(url: string | undefined): string {
   if (!url) return ''
-  return url
-    .replace('http://194.233.91.132:19000', 'https://storage.alliago.id')
-    .replace('http://storage.alliago.id', 'https://storage.alliago.id')
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  const storageBase = import.meta.env.VITE_STORAGE_URL ?? 'https://storage.alliago.id'
+  return `${storageBase}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
 export default function TherapistsPage() {

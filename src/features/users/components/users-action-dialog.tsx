@@ -34,7 +34,7 @@ const formSchema = z
   .object({
     firstName: z.string().min(1, 'Name is required.'),
     lastName: z.string().optional(),
-    username: z.string().min(1, 'Username is required.'),
+    username: z.string().optional().or(z.literal('')),
     phoneNumber: z.string().min(1, 'Phone number is required.'),
     email: z.string().optional().or(z.literal('')),
     password: z.string().transform((pwd) => pwd.trim()),
@@ -135,7 +135,7 @@ export function UsersActionDialog({
       const name = `${values.firstName} ${values.lastName}`.trim()
       const payload = {
         name,
-        whatsapp: values.phoneNumber,
+        whatsapp: values.phoneNumber || values.username,
         email: values.email || null,
         role: values.role,
         ...(values.password ? { password: values.password } : {}),
@@ -271,6 +271,7 @@ export function UsersActionDialog({
                     <SelectDropdown
                       defaultValue={field.value}
                       onValueChange={field.onChange}
+                      isControlled={true}
                       placeholder='Select a role'
                       className='col-span-4'
                       items={roles.map(({ label, value }) => ({

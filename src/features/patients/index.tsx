@@ -79,72 +79,13 @@ interface Patient {
   pernah_hipnoterapi?: any;
   ada_ketakutan_terapi?: any;
   detail_ketakutan?: string;
-}
 
-const mockPatients: Patient[] = [
-  {
-    id: "demo-1",
-    nama_lengkap: "Arfan Wijaya",
-    usia: 3,
-    jenis_kelamin: "laki-laki",
-    tempat_lahir: "Lumajang",
-    tanggal_lahir: "2023-04-12",
-    email_ortu: "arfan.parent@gmail.com",
-    no_telepon: "081915237935",
-    nama_ayah: "Budi Wijaya",
-    nama_ibu: "Siti Aminah",
-    alamat: "Jl. Diponegoro No. 45, Lumajang",
-    jenis_terapi: "terapi_wicara",
-    pendidikan_anak: "PAUD",
-    relasi_sosial: "lumayan",
-    relasi_dengan_ibu: "baik",
-    relasi_dengan_saudara: "baik",
-    status: "baru",
-    formulir_wicara: {
-      masalah_bicara: "Belum lancar mengucapkan kata berdua, kosakata kurang dari 10 kata",
-      sudah_berapa_lama: "6 bulan",
-      bahasa_sehari_hari: "Bahasa Indonesia",
-      gangguan_utama: ["Kosa kata terbatas", "Artikulasi tidak jelas"],
-      pengurus_utama: ["Ibu", "Nenek"],
-      harapan_terapi: "Semoga bisa lancar berbicara dan siap masuk sekolah TK",
-      riwayat_keterlambatan: true,
-      detail_keterlambatan: "Mulai merangkai 1 kata pada usia 2 tahun 6 bulan",
-      pernah_trauma: false,
-    }
-  },
-  {
-    id: "demo-2",
-    nama_lengkap: "Rania Amanda",
-    usia: 5,
-    jenis_kelamin: "perempuan",
-    tempat_lahir: "Surabaya",
-    tanggal_lahir: "2021-08-19",
-    email_ortu: "rania.moms@gmail.com",
-    no_telepon: "082244866770",
-    nama_ayah: "Adi Saputra",
-    nama_ibu: "Rina Amalia",
-    alamat: "Perum Gading Fajar Blok C-10, Sidoarjo",
-    jenis_terapi: "hipoterapi",
-    pendidikan_anak: "TK",
-    relasi_sosial: "buruk",
-    relasi_dengan_ibu: "lumayan",
-    relasi_dengan_saudara: "buruk",
-    status: "aktif",
-    therapist: { id: 1, name: "Faza S.Psi" },
-    formulir_hipoterapi: {
-      keluhan_utama: ["Marah", "Tidak Bisa Fokus", "Takut Nasi"],
-      penjelasan_keluhan: "Anak gampang tantrum hebat kalau keinginannya tidak dituruti, fobia nasi putih",
-      sudah_berapa_lama: "3 bulan",
-      bahasa_sehari_hari: "Bahasa Indonesia",
-      pengurus_utama: ["Ibu"],
-      harapan_terapi: "Emosi anak lebih stabil, berani makan nasi dan patuh arahan orang tua",
-      tempat_favorit: ["Taman", "Rumah"],
-      hobby: ["Menggambar", "Bermain HP/Gadget"],
-      pernah_trauma: true,
-      detail_trauma: "Pernah tersedak makanan padat saat usia 2 tahun",
-    }
-  }
-];
+  persetujuan_syarat_ketentuan?: any;
+  declarationAccepted?: any;
+  persetujuan_dokumentasi?: string;
+  penandatangan_kota?: string;
+  penandatangan_tanggal?: string;
+}
 
 const getProgramTerapiLabel = (jenis_terapi?: string) => {
   if (!jenis_terapi) return "🩺 Program Terapi";
@@ -180,13 +121,13 @@ export function Patients() {
     total_sessions: 8,
     session_date: new Date().toISOString().slice(0, 10),
     fokus_latihan: "",
-    progress_score: 80,
+    progress_score: 0,
     aspect_scores: {
-      atensi_fokus: 80,
-      artikulasi_wicara: 75,
-      regulasi_emosi: 85,
-      kepatuhan_instruksi: 70,
-      sosialisasi: 80,
+      atensi_fokus: 0,
+      artikulasi_wicara: 0,
+      regulasi_emosi: 0,
+      kepatuhan_instruksi: 0,
+      sosialisasi: 0,
     },
     catatan_terapis: "",
     rekomendasi_ortu: "",
@@ -223,8 +164,9 @@ export function Patients() {
     if (!selectedPatient) return;
     setSavingLog(true);
     try {
+      const numericId = typeof selectedPatient.id === "number" ? selectedPatient.id : Number(String(selectedPatient.id).replace(/[^0-9]/g, '')) || 0;
       const payload = {
-        patient_id: typeof selectedPatient.id === "number" ? selectedPatient.id : 1,
+        patient_id: numericId,
         therapist_id: selectedPatient.therapist_id || undefined,
         program_name: selectedPatient.jenis_terapi || "Program Terapi & Stimulasi",
         ...logForm,
@@ -251,22 +193,14 @@ export function Patients() {
   const fetchTherapists = async () => {
     try {
       const data = await api.get<TherapistItem[]>("/therapists");
-      if (data && Array.isArray(data) && data.length > 0) {
+      if (data && Array.isArray(data)) {
         setTherapists(data);
       } else {
-        setTherapists([
-          { id: 1, name: "Faza S.Psi", specialization: "Terapi Perilaku" },
-          { id: 2, name: "Amanda S.Psi", specialization: "Terapi Wicara" },
-          { id: 3, name: "Terapis Hendri", specialization: "Hipoterapi" },
-        ]);
+        setTherapists([]);
       }
     } catch (err) {
-      console.warn("Using fallback therapists list", err);
-      setTherapists([
-        { id: 1, name: "Faza S.Psi", specialization: "Terapi Perilaku" },
-        { id: 2, name: "Amanda S.Psi", specialization: "Terapi Wicara" },
-        { id: 3, name: "Terapis Hendri", specialization: "Hipoterapi" },
-      ]);
+      console.warn("Error fetching therapists list", err);
+      setTherapists([]);
     }
   };
 
@@ -300,7 +234,13 @@ export function Patients() {
         relasi_dengan_ibu: app.relasi_dengan_ibu,
         relasi_dengan_saudara: app.relasi_dengan_saudara,
         status: "baru",
+        persetujuan_syarat_ketentuan: app.persetujuan_syarat_ketentuan,
+        declarationAccepted: app.declarationAccepted,
+        persetujuan_dokumentasi: app.persetujuan_dokumentasi,
+        penandatangan_kota: app.penandatangan_kota,
+        penandatangan_tanggal: app.penandatangan_tanggal,
         formulir_wicara: app.jenis_terapi?.toLowerCase().includes("wicara") ? {
+          program_spesifik: app.program || app.program_detail,
           masalah_bicara: app.masalah_bicara,
           sudah_berapa_lama: app.sudah_berapa_lama_wicara,
           dalam_penanganan_lain: app.dalam_penanganan_lain,
@@ -321,6 +261,7 @@ export function Patients() {
           detail_kekhawatiran: app.detail_kekhawatiran,
         } : undefined,
         formulir_hipoterapi: !app.jenis_terapi?.toLowerCase().includes("wicara") ? {
+          program_spesifik: app.program || app.program_detail,
           keluhan_utama: app.keluhan_utama,
           penjelasan_keluhan: app.penjelasan_keluhan,
           sudah_berapa_lama: app.sudah_berapa_lama_hipo,
@@ -454,6 +395,52 @@ export function Patients() {
     if (val === true || val === "1" || val === 1 || val === "true") return "Ya";
     if (val === false || val === "0" || val === 0 || val === "false") return "Tidak";
     return val || "-";
+  };
+
+  const isFilledValue = (val: any): boolean => {
+    if (Array.isArray(val)) return val.length > 0;
+    if (val === undefined || val === null || val === "") return false;
+    if (val === "0" || val === 0) return false;
+    return true;
+  };
+
+  const hasNonWicaraData = (p: Patient) => {
+    if (p.formulir_hipoterapi && Object.keys(p.formulir_hipoterapi).length > 0) {
+      const keys = Object.keys(p.formulir_hipoterapi);
+      return keys.some((k) => isFilledValue(p.formulir_hipoterapi![k]));
+    }
+    if (p.keluhan_utama && p.keluhan_utama.length > 0) return true;
+    if (p.penjelasan_keluhan) return true;
+    if (p.sudah_berapa_lama_hipo) return true;
+    if (p.harapan_terapi_hipo) return true;
+    return false;
+  };
+
+  const hasWicaraData = (p: Patient) => {
+    if (p.formulir_wicara && Object.keys(p.formulir_wicara).length > 0) {
+      const keys = Object.keys(p.formulir_wicara);
+      return keys.some((k) => isFilledValue(p.formulir_wicara![k]));
+    }
+    if (p.masalah_bicara) return true;
+    if (p.sudah_berapa_lama_wicara) return true;
+    if (p.bahasa_sehari_hari_wicara) return true;
+    if (p.gangguan_utama && p.gangguan_utama.length > 0) return true;
+    if (p.harapan_terapi_wicara) return true;
+    return false;
+  };
+
+  const isWicaraType = (p: Patient) => (p.jenis_terapi || "").toLowerCase().includes("wicara");
+
+  const shouldShowWicaraForm = (p: Patient) => {
+    if (hasNonWicaraData(p)) return false;
+    if (hasWicaraData(p)) return true;
+    return isWicaraType(p);
+  };
+
+  const shouldShowNonWicaraForm = (p: Patient) => {
+    if (hasWicaraData(p)) return false;
+    if (hasNonWicaraData(p)) return true;
+    return !isWicaraType(p);
   };
 
   const renderChips = (items?: any[]) => {
@@ -767,16 +754,23 @@ export function Patients() {
                 </div>
               </div>
 
-              {/* SECTION 3: Detail Formulir Terapi */}
+              {/* SECTION 3: Detail Formulir Terapi / Konsultasi */}
               <div className="flex flex-col gap-3">
                 <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 border-b border-border pb-1">
-                  <FileText size={14} /> 3. Detail Formulir Apply Program Terapi
+                  <FileText size={14} /> 3. Detail Formulir {selectedPatient.jenis_terapi || "Apply Program Terapi"}
                 </h4>
 
                 {/* Render Wicara Form Data */}
-                {((selectedPatient.jenis_terapi || "").toLowerCase().includes("wicara") || selectedPatient.formulir_wicara) && (
+                {shouldShowWicaraForm(selectedPatient) && (
                   <div className="flex flex-col gap-3 text-xs bg-muted/20 p-4 rounded-xl border border-border">
-                    <div className="font-bold text-xs text-primary">Detail Formulir Terapi Wicara</div>
+                    <div className="font-bold text-xs text-primary flex items-center justify-between">
+                      <span>Detail Formulir Terapi Wicara</span>
+                      {(selectedPatient.formulir_wicara?.program_spesifik || selectedPatient.jenis_terapi) && (
+                        <span className="text-[11px] font-semibold text-muted-foreground bg-background px-2 py-0.5 rounded border border-border">
+                          {selectedPatient.formulir_wicara?.program_spesifik || selectedPatient.jenis_terapi}
+                        </span>
+                      )}
+                    </div>
 
                     <div>
                       <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Masalah Bicara / Komunikasi Utama</span>
@@ -821,6 +815,15 @@ export function Patients() {
                         )}
                       </div>
                       <div>
+                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pernah Terapi Sebelum di Allia Kids?</span>
+                        <span className="font-bold text-foreground">
+                          {formatBoolean(selectedPatient.formulir_wicara?.pernah_terapi_sebelumnya ?? selectedPatient.pernah_terapi_sebelumnya)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
                         <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Masalah Kehamilan / Persalinan?</span>
                         <span className="font-bold text-foreground">
                           {formatBoolean(selectedPatient.formulir_wicara?.masalah_kehamilan ?? selectedPatient.masalah_kehamilan_wicara)}
@@ -829,9 +832,6 @@ export function Patients() {
                           <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_wicara?.detail_masalah_kehamilan || selectedPatient.detail_masalah_kehamilan_wicara})</div>
                         )}
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
                       <div>
                         <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Riwayat Keterlambatan Bicara?</span>
                         <span className="font-bold text-foreground">
@@ -841,6 +841,9 @@ export function Patients() {
                           <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_wicara?.detail_keterlambatan || selectedPatient.detail_keterlambatan})</div>
                         )}
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
                         <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pernah Mengalami Trauma?</span>
                         <span className="font-bold text-foreground">
@@ -848,6 +851,15 @@ export function Patients() {
                         </span>
                         {(selectedPatient.formulir_wicara?.detail_trauma || selectedPatient.detail_trauma_wicara) && (
                           <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_wicara?.detail_trauma || selectedPatient.detail_trauma_wicara})</div>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Ada Kekhawatiran Terapi?</span>
+                        <span className="font-bold text-foreground">
+                          {formatBoolean(selectedPatient.formulir_wicara?.ada_kekhawatiran_terapi ?? selectedPatient.ada_kekhawatiran_terapi)}
+                        </span>
+                        {(selectedPatient.formulir_wicara?.detail_kekhawatiran || selectedPatient.detail_kekhawatiran) && (
+                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_wicara?.detail_kekhawatiran || selectedPatient.detail_kekhawatiran})</div>
                         )}
                       </div>
                     </div>
@@ -861,15 +873,20 @@ export function Patients() {
                   </div>
                 )}
 
-                {/* Render Hipoterapi Form Data */}
-                {(!((selectedPatient.jenis_terapi || "").toLowerCase().includes("wicara")) || selectedPatient.formulir_hipoterapi) && (
+                {/* Render Non-Wicara Form Data (Hipoterapi, Terapi Perilaku, Konsultasi, Skrining, dll) */}
+                {shouldShowNonWicaraForm(selectedPatient) && (
                   <div className="flex flex-col gap-3 text-xs bg-muted/20 p-4 rounded-xl border border-border">
-                    <div className="font-bold text-xs text-primary">
-                      Detail Formulir {selectedPatient.jenis_terapi === "hipoterapi" ? "Hipoterapi" : selectedPatient.jenis_terapi || "Evaluasi Terapi"}
+                    <div className="font-bold text-xs text-primary flex items-center justify-between">
+                      <span>Detail Formulir {selectedPatient.jenis_terapi || "Terapi / Konsultasi"}</span>
+                      {(selectedPatient.formulir_hipoterapi?.program_spesifik || selectedPatient.jenis_terapi) && (
+                        <span className="text-[11px] font-semibold text-muted-foreground bg-background px-2 py-0.5 rounded border border-border">
+                          {selectedPatient.formulir_hipoterapi?.program_spesifik || selectedPatient.jenis_terapi}
+                        </span>
+                      )}
                     </div>
 
                     <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Keluhan Utama Emosi / Perilaku</span>
+                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Keluhan Utama Emosi / Perilaku / Konsultasi</span>
                       {renderChips(selectedPatient.formulir_hipoterapi?.keluhan_utama || selectedPatient.keluhan_utama)}
                     </div>
 
@@ -900,14 +917,15 @@ export function Patients() {
                       {renderChips(selectedPatient.formulir_hipoterapi?.pengurus_utama || selectedPatient.pengurus_utama_hipo)}
                     </div>
 
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Tempat Favorit Anak</span>
-                      {renderChips(selectedPatient.formulir_hipoterapi?.tempat_favorit || selectedPatient.tempat_favorit)}
-                    </div>
-
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Kegiatan / Hobi Anak</span>
-                      {renderChips(selectedPatient.formulir_hipoterapi?.hobby || selectedPatient.hobby)}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Tempat Favorit Anak</span>
+                        {renderChips(selectedPatient.formulir_hipoterapi?.tempat_favorit || selectedPatient.tempat_favorit)}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Kegiatan / Hobi Anak</span>
+                        {renderChips(selectedPatient.formulir_hipoterapi?.hobby || selectedPatient.hobby)}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -921,6 +939,24 @@ export function Patients() {
                         )}
                       </div>
                       <div>
+                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pernah Terapi / Hipnoterapi Sebelum?</span>
+                        <span className="font-bold text-foreground">
+                          {formatBoolean(selectedPatient.formulir_hipoterapi?.pernah_hipnoterapi ?? selectedPatient.pernah_hipnoterapi)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Masalah Kehamilan / Persalinan?</span>
+                        <span className="font-bold text-foreground">
+                          {formatBoolean(selectedPatient.formulir_hipoterapi?.masalah_kehamilan ?? selectedPatient.masalah_kehamilan_hipo)}
+                        </span>
+                        {(selectedPatient.formulir_hipoterapi?.detail_masalah_kehamilan || selectedPatient.detail_masalah_kehamilan_hipo) && (
+                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_hipoterapi?.detail_masalah_kehamilan || selectedPatient.detail_masalah_kehamilan_hipo})</div>
+                        )}
+                      </div>
+                      <div>
                         <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pengalaman Negatif / Trauma?</span>
                         <span className="font-bold text-foreground">
                           {formatBoolean(selectedPatient.formulir_hipoterapi?.pernah_trauma ?? selectedPatient.pernah_trauma_hipo)}
@@ -931,6 +967,18 @@ export function Patients() {
                       </div>
                     </div>
 
+                    {selectedPatient.formulir_hipoterapi?.ada_ketakutan_terapi !== undefined && (
+                      <div>
+                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Ada Ketakutan Terhadap Terapi?</span>
+                        <span className="font-bold text-foreground">
+                          {formatBoolean(selectedPatient.formulir_hipoterapi?.ada_ketakutan_terapi ?? selectedPatient.ada_ketakutan_terapi)}
+                        </span>
+                        {(selectedPatient.formulir_hipoterapi?.detail_ketakutan || selectedPatient.detail_ketakutan) && (
+                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_hipoterapi?.detail_ketakutan || selectedPatient.detail_ketakutan})</div>
+                        )}
+                      </div>
+                    )}
+
                     <div>
                       <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Harapan Setelah Terapi</span>
                       <p className="font-bold text-foreground mt-0.5">
@@ -939,9 +987,77 @@ export function Patients() {
                     </div>
                   </div>
                 )}
+
+                {/* Fallback when no specific form data is present */}
+                {!shouldShowWicaraForm(selectedPatient) && !shouldShowNonWicaraForm(selectedPatient) && (
+                  <div className="text-xs text-muted-foreground italic bg-muted/20 p-4 rounded-xl text-center border border-border">
+                    Belum ada data detail kuisioner khusus yang terisi untuk pendaftaran ini.
+                  </div>
+                )}
               </div>
 
-              {/* SECTION 4: Catatan Internal Admin */}
+              {/* SECTION 4: Persetujuan Layanan */}
+              {(() => {
+                const hasAcceptedTerms =
+                  selectedPatient.persetujuan_syarat_ketentuan === true ||
+                  selectedPatient.persetujuan_syarat_ketentuan === "true" ||
+                  selectedPatient.persetujuan_syarat_ketentuan === 1 ||
+                  selectedPatient.declarationAccepted === true ||
+                  selectedPatient.declarationAccepted === "true" ||
+                  selectedPatient.declarationAccepted === 1;
+                const dokumentasiLabel: Record<string, string> = {
+                  setuju_tanpa_pengecualian: "Setuju tanpa pengecualian",
+                  setuju_dengan_sensor: "Setuju dengan sensor",
+                  tidak_setuju: "Tidak setuju",
+                };
+                const dokumentasiText = selectedPatient.persetujuan_dokumentasi
+                  ? (dokumentasiLabel[selectedPatient.persetujuan_dokumentasi] || selectedPatient.persetujuan_dokumentasi)
+                  : null;
+                if (!hasAcceptedTerms && !dokumentasiText && !selectedPatient.penandatangan_kota && !selectedPatient.penandatangan_tanggal) return null;
+                return (
+                  <div className="flex flex-col gap-3">
+                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 border-b border-border pb-1">
+                      <FileText size={14} /> 4. Persetujuan Layanan (Syarat & Ketentuan)
+                    </h4>
+                    <div className="flex flex-col gap-3 text-xs bg-muted/20 p-4 rounded-xl border border-border">
+                      <div>
+                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Persetujuan Syarat & Ketentuan</span>
+                        {hasAcceptedTerms ? (
+                          <span className="inline-flex items-center gap-1 mt-1 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200 px-2 py-0.5 rounded text-[11px] font-bold">
+                            ✓ Telah membaca dan menyetujui Syarat & Ketentuan Persetujuan Layanan
+                          </span>
+                        ) : (
+                          <span className="font-bold text-foreground">-</span>
+                        )}
+                      </div>
+                      {dokumentasiText && (
+                        <div>
+                          <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Persetujuan Dokumentasi</span>
+                          <span className="font-bold text-foreground">{dokumentasiText}</span>
+                        </div>
+                      )}
+                      {(selectedPatient.penandatangan_kota || selectedPatient.penandatangan_tanggal) && (
+                        <div className="grid grid-cols-2 gap-3">
+                          {selectedPatient.penandatangan_kota && (
+                            <div>
+                              <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Kota Penandatangan</span>
+                              <span className="font-bold text-foreground">{selectedPatient.penandatangan_kota}</span>
+                            </div>
+                          )}
+                          {selectedPatient.penandatangan_tanggal && (
+                            <div>
+                              <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Tanggal Penandatangan</span>
+                              <span className="font-bold text-foreground">{selectedPatient.penandatangan_tanggal}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* SECTION 5: Catatan Internal Admin */}
               <div className="flex flex-col gap-2 border-t border-border pt-3">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Catatan Terapis / Admin Internal</label>
                 <textarea
