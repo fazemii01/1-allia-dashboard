@@ -65,7 +65,7 @@ const QUICK_TAGS = [
 ];
 
 const SAMPLE_VARS: Record<string, string> = {
-  nama_ortu: "Bapak / Ibu Wali Murid",
+  nama_ortu: "Bapak / Ibu ",
   nama_anak: "Budi",
   usia: "5 Tahun",
   jenis_terapi: "Terapi Wicara",
