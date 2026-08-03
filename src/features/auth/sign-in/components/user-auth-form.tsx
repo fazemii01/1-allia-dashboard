@@ -75,6 +75,12 @@ export function UserAuthForm({
 
       const resData = await response.json() // { access_token, user: { id, name, whatsapp, email, role } }
 
+      const userRole = resData.user?.role
+      const isAllowed = userRole === 'admin' || userRole === 'staff'
+      if (!isAllowed) {
+        throw new Error('Akses ditolak: Hanya akun Admin dan Staff yang diizinkan masuk ke Dashboard.')
+      }
+
       // Persist token for apiFetch
       localStorage.setItem('admin_token', resData.access_token)
 

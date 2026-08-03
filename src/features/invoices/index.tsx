@@ -70,8 +70,9 @@ function formatRp(amount: number) {
 
 export default function InvoicesPage() {
   const { auth } = useAuthStore()
-  const userRole = auth.user?.role?.[0] || 'user'
-  const canManageInvoices = userRole === 'admin'
+  const rawRole = auth.user?.role
+  const userRole = Array.isArray(rawRole) ? rawRole[0] : (rawRole || 'user')
+  const canManageInvoices = userRole === 'admin' || userRole === 'staff'
 
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [patients, setPatients] = useState<Patient[]>([])

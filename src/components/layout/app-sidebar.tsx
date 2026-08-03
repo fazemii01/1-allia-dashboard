@@ -16,15 +16,17 @@ import { useAuthStore } from '@/stores/auth-store'
 export function AppSidebar() {
   const { collapsible, variant } = useLayout()
   const { auth } = useAuthStore()
-  const userRole = auth.user?.role?.[0] || 'user'
+  const rawRole = auth.user?.role
+  const userRole = Array.isArray(rawRole) ? rawRole[0] : (rawRole || 'user')
   const isAdmin = userRole === 'admin'
+  const isStaff = userRole === 'staff'
 
-  // Dynamically filter navGroups to hide admin-only pages if not admin
+  // Dynamically filter navGroups to hide admin-only pages
   const filteredNavGroups = sidebarData.navGroups.map((group) => {
     return {
       ...group,
       items: group.items.filter((item) => {
-        if (item.url === '/permissions' && !isAdmin) {
+        if ((item.url === '/permissions' || item.url === '/users') && !isAdmin) {
           return false
         }
         return true
