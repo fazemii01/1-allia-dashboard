@@ -54,6 +54,7 @@ interface WAAutoReply {
 const QUICK_TAGS = [
   { label: "+ Nama Ortu", tag: "{nama_ortu}" },
   { label: "+ Nama Anak", tag: "{nama_anak}" },
+  { label: "+ Link Invoice 🔗", tag: "{link_invoice}" },
   { label: "+ Usia", tag: "{usia}" },
   { label: "+ Jenis Terapi", tag: "{jenis_terapi}" },
   { label: "+ Layanan", tag: "{layanan}" },
@@ -67,12 +68,15 @@ const QUICK_TAGS = [
 const SAMPLE_VARS: Record<string, string> = {
   nama_ortu: "Bapak / Ibu ",
   nama_anak: "Budi",
-  usia: "5 Tahun",
+  link_invoice: "https://app.alliakids.com/invoice/PUFFCRB9",
+  usia: "5",
   jenis_terapi: "Terapi Wicara",
   layanan: "Sesi Terapi Wicara & Pendampingan",
   invoice_number: "INV-20260803-0001",
   total_amount: "350.000",
   due_date: "10 Agustus 2026",
+  tanggal: "5 Agustus 2026",
+};
   tanggal: "3 Agustus 2026",
 };
 
