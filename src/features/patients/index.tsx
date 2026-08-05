@@ -3,7 +3,8 @@ import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { Search, Eye, Filter, AlertCircle, MessageSquare, RefreshCw, X, FileText, User, HeartHandshake } from "lucide-react";
+import { Search, Eye, Filter, AlertCircle, MessageSquare, RefreshCw, X, FileText, User, HeartHandshake, Download, Printer } from "lucide-react";
+import { PatientPdfBuilder } from "./components/patient-pdf-builder";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -113,6 +114,8 @@ export function Patients() {
   const [loading, setLoading] = useState(false);
 
   const [progressModalOpen, setProgressModalOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [pdfPatient, setPdfPatient] = useState<Patient | null>(null);
   const [patientLogs, setPatientLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [savingLog, setSavingLog] = useState(false);
@@ -581,7 +584,19 @@ export function Patients() {
                                 {p.status}
                               </span>
                             </td>
-                            <td className="p-3.5 text-right">
+                            <td className="p-3.5 text-right flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPdfPatient(p);
+                                  setIsPdfModalOpen(true);
+                                }}
+                                title="Download PDF Formulir Rekapitulasi Pasien"
+                                className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-md text-xs font-bold shadow-xs transition-all cursor-pointer"
+                              >
+                                <Download size={13} /> PDF
+                              </button>
                               <button
                                 onClick={() => setSelectedPatient(p)}
                                 className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-md cursor-pointer transition-all shadow-sm ${
@@ -622,12 +637,22 @@ export function Patients() {
                   <button
                     type="button"
                     onClick={() => {
+                      setPdfPatient(selectedPatient);
+                      setIsPdfModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow transition-all cursor-pointer"
+                  >
+                    <Download size={14} /> PDF Formulir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       fetchPatientLogs(selectedPatient.id);
                       setProgressModalOpen(true);
                     }}
-                    className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground hover:brightness-110 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground hover:brightness-110 px-3 py-1.5 rounded-lg text-xs font-bold shadow transition-all cursor-pointer"
                   >
-                    📊 Progress & Milestone Sesi
+                    📊 Progress Sesi
                   </button>
                   <button
                     onClick={() => setSelectedPatient(null)}
@@ -1311,6 +1336,13 @@ export function Patients() {
           </div>
         </div>
       )}
+
+      {/* Patient PDF Builder Modal */}
+      <PatientPdfBuilder
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        patient={pdfPatient}
+      />
     </div>
   );
 }
