@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ClerkRouteRouteImport } from './routes/clerk/route'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as InvoiceCodeRouteImport } from './routes/invoice/$code'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
@@ -51,22 +52,8 @@ import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
-import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
-import { Route as InvoiceCodeRouteImport } from './routes/invoice/$code'
 import { Route as AuthenticatedInvoicesCodeRouteImport } from './routes/_authenticated/invoices/$code'
-
-const InvoiceCodeRoute = InvoiceCodeRouteImport.update({
-  id: '/invoice/$code',
-  path: '/invoice/$code',
-  getParentRoute: () => rootRouteImport,
-} as any)
-
-const AuthenticatedInvoicesCodeRoute =
-  AuthenticatedInvoicesCodeRouteImport.update({
-    id: '/invoices/$code',
-    path: '/invoices/$code',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
+import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 
 const ClerkRouteRoute = ClerkRouteRouteImport.update({
   id: '/clerk',
@@ -81,6 +68,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const InvoiceCodeRoute = InvoiceCodeRouteImport.update({
+  id: '/invoice/$code',
+  path: '/invoice/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const errors503Route = errors503RouteImport.update({
   id: '/(errors)/503',
@@ -296,6 +288,12 @@ const AuthenticatedSettingsAccountRoute =
     path: '/account',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedInvoicesCodeRoute =
+  AuthenticatedInvoicesCodeRouteImport.update({
+    id: '/invoices/$code',
+    path: '/invoices/$code',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedErrorsErrorRoute =
   AuthenticatedErrorsErrorRouteImport.update({
     id: '/errors/$error',
@@ -317,7 +315,9 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/invoice/$code': typeof InvoiceCodeRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/invoices/$code': typeof AuthenticatedInvoicesCodeRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -357,8 +357,10 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/invoice/$code': typeof InvoiceCodeRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/invoices/$code': typeof AuthenticatedInvoicesCodeRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -403,8 +405,10 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
+  '/invoice/$code': typeof InvoiceCodeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/_authenticated/invoices/$code': typeof AuthenticatedInvoicesCodeRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -448,7 +452,9 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/invoice/$code'
     | '/errors/$error'
+    | '/invoices/$code'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -488,8 +494,10 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/invoice/$code'
     | '/'
     | '/errors/$error'
+    | '/invoices/$code'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -533,8 +541,10 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
+    | '/invoice/$code'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
+    | '/_authenticated/invoices/$code'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
@@ -576,24 +586,11 @@ export interface RootRouteChildren {
   errors404Route: typeof errors404Route
   errors500Route: typeof errors500Route
   errors503Route: typeof errors503Route
+  InvoiceCodeRoute: typeof InvoiceCodeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/invoice/$code': {
-      id: '/invoice/$code'
-      path: '/invoice/$code'
-      fullPath: '/invoice/$code'
-      preLoaderRoute: typeof InvoiceCodeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/invoices/$code': {
-      id: '/_authenticated/invoices/$code'
-      path: '/invoices/$code'
-      fullPath: '/invoices/$code'
-      preLoaderRoute: typeof AuthenticatedInvoicesCodeRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/clerk': {
       id: '/clerk'
       path: '/clerk'
@@ -614,6 +611,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/invoice/$code': {
+      id: '/invoice/$code'
+      path: '/invoice/$code'
+      fullPath: '/invoice/$code'
+      preLoaderRoute: typeof InvoiceCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/(errors)/503': {
       id: '/(errors)/503'
@@ -888,6 +892,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/invoices/$code': {
+      id: '/_authenticated/invoices/$code'
+      path: '/invoices/$code'
+      fullPath: '/invoices/$code'
+      preLoaderRoute: typeof AuthenticatedInvoicesCodeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/errors/$error': {
       id: '/_authenticated/errors/$error'
       path: '/errors/$error'
@@ -925,6 +936,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedInvoicesCodeRoute: typeof AuthenticatedInvoicesCodeRoute
   AuthenticatedActivityLogsIndexRoute: typeof AuthenticatedActivityLogsIndexRoute
   AuthenticatedAppointmentsIndexRoute: typeof AuthenticatedAppointmentsIndexRoute
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
@@ -949,6 +961,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedInvoicesCodeRoute: AuthenticatedInvoicesCodeRoute,
   AuthenticatedActivityLogsIndexRoute: AuthenticatedActivityLogsIndexRoute,
   AuthenticatedAppointmentsIndexRoute: AuthenticatedAppointmentsIndexRoute,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
@@ -1018,7 +1031,6 @@ const ClerkRouteRouteWithChildren = ClerkRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ClerkRouteRoute: ClerkRouteRouteWithChildren,
-  InvoiceCodeRoute: InvoiceCodeRoute,
   authForgotPasswordRoute: authForgotPasswordRoute,
   authOtpRoute: authOtpRoute,
   authSignInRoute: authSignInRoute,
@@ -1029,6 +1041,7 @@ const rootRouteChildren: RootRouteChildren = {
   errors404Route: errors404Route,
   errors500Route: errors500Route,
   errors503Route: errors503Route,
+  InvoiceCodeRoute: InvoiceCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

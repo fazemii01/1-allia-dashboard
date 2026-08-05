@@ -47,8 +47,9 @@ interface InvoiceData {
   items?: InvoiceItem[];
 }
 
-export default function PublicInvoiceView() {
-  const { code } = useParams({ from: '/invoice/$code' });
+export default function PublicInvoiceView({ codeParam }: { codeParam?: string } = {}) {
+  const params = useParams({ strict: false }) as Record<string, string>;
+  const code = codeParam || params?.code || "";
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

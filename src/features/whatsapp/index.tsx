@@ -77,8 +77,6 @@ const SAMPLE_VARS: Record<string, string> = {
   due_date: "10 Agustus 2026",
   tanggal: "5 Agustus 2026",
 };
-  tanggal: "3 Agustus 2026",
-};
 
 export function WhatsAppManager() {
   const [activeTab, setActiveTab] = useState<"templates" | "logs" | "auto_replies" | "direct">("templates");
