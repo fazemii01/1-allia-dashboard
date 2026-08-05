@@ -53,12 +53,20 @@ import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_a
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 import { Route as InvoiceCodeRouteImport } from './routes/invoice/$code'
+import { Route as AuthenticatedInvoicesCodeRouteImport } from './routes/_authenticated/invoices/$code'
 
 const InvoiceCodeRoute = InvoiceCodeRouteImport.update({
   id: '/invoice/$code',
   path: '/invoice/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+
+const AuthenticatedInvoicesCodeRoute =
+  AuthenticatedInvoicesCodeRouteImport.update({
+    id: '/invoices/$code',
+    path: '/invoices/$code',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 const ClerkRouteRoute = ClerkRouteRouteImport.update({
   id: '/clerk',
@@ -572,6 +580,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/invoice/$code': {
+      id: '/invoice/$code'
+      path: '/invoice/$code'
+      fullPath: '/invoice/$code'
+      preLoaderRoute: typeof InvoiceCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/invoices/$code': {
+      id: '/_authenticated/invoices/$code'
+      path: '/invoices/$code'
+      fullPath: '/invoices/$code'
+      preLoaderRoute: typeof AuthenticatedInvoicesCodeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/clerk': {
       id: '/clerk'
       path: '/clerk'
