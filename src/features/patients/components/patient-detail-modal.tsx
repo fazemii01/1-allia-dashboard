@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 export interface PatientDetailData {
   id: string | number;
@@ -125,6 +126,8 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   // New progress log form state
   const [savingLog, setSavingLog] = useState<boolean>(false);
   const [editingLogId, setEditingLogId] = useState<number | null>(null);
+  const [deleteLogId, setDeleteLogId] = useState<number | null>(null);
+  const [deletingLog, setDeletingLog] = useState<boolean>(false);
   const [logForm, setLogForm] = useState({
     program_name: "",
     session_number: 1,
@@ -269,16 +272,23 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
     });
   };
 
-  const handleDeleteLogClick = async (logId: number) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus log perkembangan sesi ini?")) {
-      try {
-        if (onDeleteLog) {
-          await onDeleteLog(logId);
-          toast.success("Log perkembangan sesi terapi berhasil dihapus!");
-        }
-      } catch {
-        toast.error("Gagal menghapus log perkembangan sesi");
+  const handleDeleteLogClick = (logId: number) => {
+    setDeleteLogId(logId);
+  };
+
+  const handleConfirmDeleteLog = async () => {
+    if (!deleteLogId) return;
+    setDeletingLog(true);
+    try {
+      if (onDeleteLog) {
+        await onDeleteLog(deleteLogId);
+        toast.success("Log perkembangan sesi terapi berhasil dihapus!");
       }
+    } catch {
+      toast.error("Gagal menghapus log perkembangan sesi");
+    } finally {
+      setDeletingLog(false);
+      setDeleteLogId(null);
     }
   };
 
@@ -1315,6 +1325,19 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Delete Progress Log Confirmation Modal */}
+      <ConfirmDialog
+        open={deleteLogId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteLogId(null); }}
+        title="Hapus Log Perkembangan Sesi"
+        desc="Apakah Anda yakin ingin menghapus log perkembangan sesi ini? Catatan ini akan dihapus permanen dari rekam medis pasien."
+        confirmText="Hapus Log"
+        cancelBtnText="Batal"
+        destructive
+        isLoading={deletingLog}
+        handleConfirm={handleConfirmDeleteLog}
+      />
     </Dialog>
   );
 };

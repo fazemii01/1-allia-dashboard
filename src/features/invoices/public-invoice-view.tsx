@@ -169,7 +169,7 @@ export default function PublicInvoiceView({ codeParam }: { codeParam?: string } 
 
     const printWindow = window.open('', '_blank', 'width=900,height=1100');
     if (!printWindow) {
-      alert('Gagal membuka jendela cetak. Pastikan pop-up diizinkan browser.');
+      toast.error('Gagal membuka jendela cetak. Pastikan pop-up diizinkan browser.');
       return;
     }
 

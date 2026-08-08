@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer, Download, X } from "lucide-react";
+import { toast } from "sonner";
 
 export interface PatientPdfData {
   id: string | number;
@@ -91,7 +92,7 @@ export const PatientPdfBuilder: React.FC<PatientPdfBuilderProps> = ({
 
     const printWindow = window.open("", "_blank", "width=900,height=1100");
     if (!printWindow) {
-      alert("Gagal membuka jendela cetak. Pastikan pop-up diizinkan oleh browser.");
+      toast.error("Gagal membuka jendela cetak. Pastikan pop-up diizinkan oleh browser.");
       return;
     }
 
