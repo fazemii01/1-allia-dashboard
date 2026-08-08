@@ -35,6 +35,9 @@ import {
   CheckCircle,
   Target,
   Activity,
+  Pencil,
+  Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -93,6 +96,8 @@ interface PatientDetailModalProps {
   onAssignTherapist: (id: string | number, therapistIdStr: string) => void;
   onUpdateNotes: (id: string | number, notes: string) => void;
   onSaveLog: (logData: any) => Promise<void>;
+  onUpdateLog?: (logId: number, logData: any) => Promise<void>;
+  onDeleteLog?: (logId: number) => Promise<void>;
   onOpenPdf: (patient: PatientDetailData, selectedBookingProgram?: string) => void;
 }
 
@@ -107,6 +112,8 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   onAssignTherapist,
   onUpdateNotes,
   onSaveLog,
+  onUpdateLog,
+  onDeleteLog,
   onOpenPdf,
 }) => {
   const [activeTab, setActiveTab] = useState<"bookings" | "progress" | "profile">("bookings");
@@ -123,13 +130,13 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
     total_sessions: 8,
     session_date: new Date().toISOString().slice(0, 10),
     fokus_latihan: "",
-    progress_score: 0,
+    progress_score: 80,
     aspect_scores: {
-      atensi_fokus: 0,
-      artikulasi_wicara: 0,
-      regulasi_emosi: 0,
-      kepatuhan_instruksi: 0,
-      sosialisasi: 0,
+      atensi_fokus: 80,
+      artikulasi_wicara: 75,
+      regulasi_emosi: 85,
+      kepatuhan_instruksi: 70,
+      sosialisasi: 75,
     },
     catatan_terapis: "",
     rekomendasi_ortu: "",
@@ -212,16 +219,93 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
     }
   };
 
+  // Editing state
+  const [editingLogId, setEditingLogId] = useState<number | null>(null);
+
+  const handleStartEditLog = (log: any) => {
+    setEditingLogId(log.id);
+    setLogForm({
+      program_name: log.program_name || bookingList[0]?.jenis_terapi || "Program Terapi & Stimulasi",
+      session_number: log.session_number || 1,
+      total_sessions: log.total_sessions || 8,
+      session_date: log.session_date ? String(log.session_date).slice(0, 10) : new Date().toISOString().slice(0, 10),
+      fokus_latihan: log.fokus_latihan || "",
+      progress_score: log.progress_score ?? 80,
+      aspect_scores: {
+        atensi_fokus: log.aspect_scores?.atensi_fokus ?? 80,
+        artikulasi_wicara: log.aspect_scores?.artikulasi_wicara ?? 75,
+        regulasi_emosi: log.aspect_scores?.regulasi_emosi ?? 85,
+        kepatuhan_instruksi: log.aspect_scores?.kepatuhan_instruksi ?? 70,
+        sosialisasi: log.aspect_scores?.sosialisasi ?? 75,
+      },
+      catatan_terapis: log.catatan_terapis || "",
+      rekomendasi_ortu: log.rekomendasi_ortu || "",
+      status_pencapaian: log.status_pencapaian || "sesuai_target",
+    });
+    const formEl = document.getElementById("progress-log-form");
+    if (formEl) formEl.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleCancelEditLog = () => {
+    setEditingLogId(null);
+    const maxSesi = patientLogs && patientLogs.length > 0 ? Math.max(...patientLogs.map((l: any) => l.session_number || 0)) : 0;
+    setLogForm({
+      program_name: bookingList[0]?.jenis_terapi || "Program Terapi & Stimulasi",
+      session_number: maxSesi + 1,
+      total_sessions: 8,
+      session_date: new Date().toISOString().slice(0, 10),
+      fokus_latihan: "",
+      progress_score: 80,
+      aspect_scores: {
+        atensi_fokus: 80,
+        artikulasi_wicara: 75,
+        regulasi_emosi: 85,
+        kepatuhan_instruksi: 70,
+        sosialisasi: 75,
+      },
+      catatan_terapis: "",
+      rekomendasi_ortu: "",
+      status_pencapaian: "sesuai_target",
+    });
+  };
+
+  const handleDeleteLogClick = async (logId: number) => {
+    if (window.confirm("Apakah Anda yakin ingin menghapus log perkembangan sesi ini?")) {
+      try {
+        if (onDeleteLog) {
+          await onDeleteLog(logId);
+          toast.success("Log perkembangan sesi terapi berhasil dihapus!");
+        }
+      } catch {
+        toast.error("Gagal menghapus log perkembangan sesi");
+      }
+    }
+  };
+
   const handleSubmitNewLog = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingLog(true);
     try {
-      await onSaveLog(logForm);
-      toast.success("Log perkembangan sesi terapi berhasil ditambahkan!");
+      if (editingLogId && onUpdateLog) {
+        await onUpdateLog(editingLogId, logForm);
+        toast.success("Log perkembangan sesi terapi berhasil diperbarui!");
+        setEditingLogId(null);
+      } else {
+        await onSaveLog(logForm);
+        toast.success("Log perkembangan sesi terapi berhasil ditambahkan!");
+      }
       setLogForm((f) => ({
         ...f,
         session_number: f.session_number + 1,
         fokus_latihan: "",
+        progress_score: 80,
+        aspect_scores: {
+          atensi_fokus: 80,
+          artikulasi_wicara: 75,
+          regulasi_emosi: 85,
+          kepatuhan_instruksi: 70,
+          sosialisasi: 75,
+        },
         catatan_terapis: "",
         rekomendasi_ortu: "",
       }));
@@ -647,12 +731,26 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
               return logProg.includes(selProg) || selProg.includes(logProg);
             });
 
+            const getLogScore = (l: any) => {
+              if (l?.progress_score && Number(l.progress_score) > 0) return Number(l.progress_score);
+              if (l?.aspect_scores) {
+                const asp = l.aspect_scores;
+                const vals = [asp.atensi_fokus, asp.artikulasi_wicara, asp.regulasi_emosi, asp.kepatuhan_instruksi, asp.sosialisasi].filter(
+                  (v) => typeof v === 'number' && v > 0
+                );
+                if (vals.length > 0) {
+                  return Math.round(vals.reduce((a: number, b: number) => a + b, 0) / vals.length);
+                }
+              }
+              return 80;
+            };
+
             const latestLog = activeLogs.length > 0 ? activeLogs[activeLogs.length - 1] : null;
             const totalSesi = latestLog?.total_sessions || 8;
             const completedSesi = activeLogs.length;
             const percentSesi = Math.min(100, Math.round((completedSesi / totalSesi) * 100));
             const avgScore = activeLogs.length > 0 
-              ? Math.round(activeLogs.reduce((acc: number, l: any) => acc + (l.progress_score || 0), 0) / activeLogs.length)
+              ? Math.round(activeLogs.reduce((acc: number, l: any) => acc + getLogScore(l), 0) / activeLogs.length)
               : 0;
             const aspect = latestLog?.aspect_scores || {};
 
@@ -832,9 +930,29 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-slate-500 font-medium">
-                              {new Date(log.session_date || log.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-slate-500 font-medium">
+                                {new Date(log.session_date || log.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditLog(log)}
+                                className="p-1 px-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 font-bold text-[11px] flex items-center gap-1 hover:bg-blue-100 transition-all cursor-pointer"
+                                title="Edit Log Perkembangan"
+                              >
+                                <Pencil className="h-3 w-3" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteLogClick(log.id)}
+                                className="p-1 px-2 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200/60 font-bold text-[11px] flex items-center gap-1 hover:bg-red-100 transition-all cursor-pointer"
+                                title="Hapus Log Perkembangan"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                <span>Hapus</span>
+                              </button>
+                            </div>
                           </div>
                           <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                             Fokus Latihan: <span className="font-semibold text-slate-600 dark:text-slate-400">{log.fokus_latihan || "-"}</span>
@@ -853,11 +971,20 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                   )}
                 </div>
 
-                {/* Form Add New Progress Log With Full Manageable Parameters */}
-                <form onSubmit={handleSubmitNewLog} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
+                {/* Form Add / Edit Progress Log With Full Manageable Parameters */}
+                <form id="progress-log-form" onSubmit={handleSubmitNewLog} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
                   <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <Plus className="h-4 w-4 text-blue-600" />
-                    Tambah Log Perkembangan Sesi Baru (Kelola Semua Parameter Portal)
+                    {editingLogId ? (
+                      <>
+                        <Pencil className="h-4 w-4 text-purple-600" />
+                        Edit Log Perkembangan Sesi (Sesi Ke-{logForm.session_number})
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 text-blue-600" />
+                        Tambah Log Perkembangan Sesi Baru (Kelola Semua Parameter Portal)
+                      </>
+                    )}
                   </h3>
 
                   {/* Row 1: Program, Sesi, Total Sesi, Tanggal */}
@@ -1098,10 +1225,29 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                     />
                   </div>
 
-                  <div className="flex justify-end pt-2">
-                    <Button type="submit" disabled={savingLog} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5">
+                  <div className="flex justify-end gap-2 pt-2">
+                    {editingLogId && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancelEditLog}
+                        className="font-bold text-xs gap-1.5 cursor-pointer"
+                      >
+                        <X className="h-4 w-4" />
+                        Batal Edit
+                      </Button>
+                    )}
+                    <Button
+                      type="submit"
+                      disabled={savingLog}
+                      className={`${editingLogId ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700"} text-white font-bold text-xs gap-1.5 cursor-pointer`}
+                    >
                       <Save className="h-4 w-4" />
-                      {savingLog ? "Menyimpan..." : "Simpan Log Perkembangan Sesi"}
+                      {savingLog
+                        ? "Menyimpan..."
+                        : editingLogId
+                        ? "Simpan Perubahan Log"
+                        : "Simpan Log Perkembangan Sesi"}
                     </Button>
                   </div>
                 </form>

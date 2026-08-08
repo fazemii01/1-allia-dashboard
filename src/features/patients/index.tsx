@@ -340,6 +340,34 @@ export function Patients() {
     fetchLogsForPatient(selectedPatient.id);
   };
 
+  const handleUpdateLogForModal = async (logId: number, formData: any) => {
+    try {
+      try {
+        await api.patch(`/admin/therapy-progress/${logId}`, formData);
+      } catch {
+        await api.patch(`/therapy-progress/${logId}`, formData);
+      }
+      if (selectedPatient) fetchLogsForPatient(selectedPatient.id);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal memperbarui log perkembangan");
+      throw err;
+    }
+  };
+
+  const handleDeleteLogForModal = async (logId: number) => {
+    try {
+      try {
+        await api.delete(`/admin/therapy-progress/${logId}`);
+      } catch {
+        await api.delete(`/therapy-progress/${logId}`);
+      }
+      if (selectedPatient) fetchLogsForPatient(selectedPatient.id);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus log perkembangan");
+      throw err;
+    }
+  };
+
   const handleOpenPdfFromModal = (p: Patient, selectedProgram?: string) => {
     setPdfPatient(p);
     setSelectedPdfProgram(selectedProgram);
@@ -544,6 +572,8 @@ export function Patients() {
         onAssignTherapist={handleAssignTherapist}
         onUpdateNotes={handleUpdateNotes}
         onSaveLog={handleSaveLogForModal}
+        onUpdateLog={handleUpdateLogForModal}
+        onDeleteLog={handleDeleteLogForModal}
         onOpenPdf={handleOpenPdfFromModal}
       />
 
