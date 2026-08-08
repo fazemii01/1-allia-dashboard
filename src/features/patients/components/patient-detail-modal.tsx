@@ -28,6 +28,13 @@ import {
   HeartHandshake,
   ShieldCheck,
   UserCheck,
+  BarChart2,
+  Eye,
+  Volume2,
+  Heart,
+  CheckCircle,
+  Target,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -239,12 +246,12 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   const getProgramTitle = (jenis?: string) => {
     if (!jenis) return "Program Terapi & Stimulasi";
     const lower = jenis.toLowerCase();
-    if (lower.includes("wicara")) return "🗣️ Terapi Wicara";
-    if (lower.includes("hipo")) return "🧠 Hipoterapi & Sensori";
-    if (lower.includes("konsultasi")) return "💬 Konsultasi Tumbuh Kembang";
-    if (lower.includes("skrining")) return "📏 Skrining Tumbuh Kembang";
-    if (lower.includes("bakat") || lower.includes("sidik")) return "👆 Analisa Sidik Jari Bakat";
-    return `🩺 ${jenis}`;
+    if (lower.includes("wicara")) return "Terapi Wicara";
+    if (lower.includes("hipo")) return "Hipoterapi & Sensori";
+    if (lower.includes("konsultasi")) return "Konsultasi Tumbuh Kembang";
+    if (lower.includes("skrining")) return "Skrining Tumbuh Kembang";
+    if (lower.includes("bakat") || lower.includes("sidik")) return "Analisa Sidik Jari Bakat";
+    return jenis;
   };
 
   return (
@@ -582,11 +589,11 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                       onChange={(e) => onUpdateStatus(activeBooking.id, e.target.value as any)}
                       className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 font-bold text-slate-900 dark:text-slate-100"
                     >
-                      <option value="baru">🔵 Baru (Pending)</option>
-                      <option value="terjadwal">🟡 Terjadwal</option>
-                      <option value="aktif">🟢 Aktif Terapi</option>
-                      <option value="selesai">🟣 Selesai Program</option>
-                      <option value="dibatalkan">🔴 Dibatalkan</option>
+                      <option value="baru">Baru (Pending)</option>
+                      <option value="terjadwal">Terjadwal</option>
+                      <option value="aktif">Aktif Terapi</option>
+                      <option value="selesai">Selesai Program</option>
+                      <option value="dibatalkan">Dibatalkan</option>
                     </select>
                   </div>
 
@@ -632,84 +639,183 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
           )}
 
           {/* TAB 2: PROGRESS & SESI TERAPI */}
-          {activeTab === "progress" && (
-            <div className="space-y-6">
-              {/* Filter Program Selector Bar for Multi-Program Patients */}
-              <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    Filter Program Terapi ({bookingList.length} Program Pasien):
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setSelectedProgressProgram("all")}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                      selectedProgressProgram === "all"
-                        ? "bg-purple-600 text-white border-purple-600 shadow-md"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-purple-50 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    <span>Semua Program ({patientLogs.length})</span>
-                  </button>
-                  {bookingList.map((b, idx) => {
-                    const progName = b.jenis_terapi || "Program Terapi";
-                    const isSelected = selectedProgressProgram.toLowerCase() === progName.toLowerCase();
-                    const logCount = patientLogs.filter((l: any) =>
-                      (l.program_name || "").toLowerCase().includes(progName.toLowerCase()) ||
-                      progName.toLowerCase().includes((l.program_name || "").toLowerCase())
-                    ).length;
-                    return (
-                      <button
-                        key={b.id || idx}
-                        onClick={() => setSelectedProgressProgram(progName)}
-                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-purple-600 text-white border-purple-600 shadow-md"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-purple-50 dark:hover:bg-slate-700"
-                        }`}
-                      >
-                        <span>{getProgramTitle(progName)}</span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isSelected ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
-                          {logCount}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+          {activeTab === "progress" && (() => {
+            const activeLogs = patientLogs.filter((log: any) => {
+              if (selectedProgressProgram === "all") return true;
+              const logProg = (log.program_name || "").toLowerCase();
+              const selProg = selectedProgressProgram.toLowerCase();
+              return logProg.includes(selProg) || selProg.includes(logProg);
+            });
 
-              {/* Existing Progress Logs Timeline */}
-              <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
-                <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
-                  Riwayat Perkembangan Sesi Terapi (
-                  {selectedProgressProgram === "all"
-                    ? `${patientLogs.length} Sesi`
-                    : `${patientLogs.filter((l: any) => (l.program_name || "").toLowerCase().includes(selectedProgressProgram.toLowerCase())).length} Sesi ${getProgramTitle(selectedProgressProgram)}`}
-                  )
-                </h3>
+            const latestLog = activeLogs.length > 0 ? activeLogs[activeLogs.length - 1] : null;
+            const totalSesi = latestLog?.total_sessions || 8;
+            const completedSesi = activeLogs.length;
+            const percentSesi = Math.min(100, Math.round((completedSesi / totalSesi) * 100));
+            const avgScore = activeLogs.length > 0 
+              ? Math.round(activeLogs.reduce((acc: number, l: any) => acc + (l.progress_score || 0), 0) / activeLogs.length)
+              : 0;
+            const aspect = latestLog?.aspect_scores || {};
 
-                {loadingLogs ? (
-                  <div className="py-8 text-center text-xs text-slate-500 animate-pulse">Memuat log perkembangan sesi...</div>
-                ) : patientLogs.length === 0 ? (
-                  <div className="p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
-                    <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Belum ada log perkembangan sesi terapi.</p>
-                    <p className="text-[11px] text-slate-400 mt-1">Gunakan formulir di bawah untuk menambahkan catatan perkembangan sesi pertama pasien ini.</p>
+            return (
+              <div className="space-y-6">
+                {/* Filter Program Selector Bar for Multi-Program Patients */}
+                <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-purple-600" />
+                      Filter Program Terapi ({bookingList.length} Program Pasien):
+                    </span>
                   </div>
-                ) : (
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-                    {patientLogs
-                      .filter((log: any) => {
-                        if (selectedProgressProgram === "all") return true;
-                        const logProg = (log.program_name || "").toLowerCase();
-                        const selProg = selectedProgressProgram.toLowerCase();
-                        return logProg.includes(selProg) || selProg.includes(logProg);
-                      })
-                      .map((log: any) => (
-                        <div key={log.id} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setSelectedProgressProgram("all")}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        selectedProgressProgram === "all"
+                          ? "bg-purple-600 text-white border-purple-600 shadow-md"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-purple-50 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      <span>Semua Program ({patientLogs.length})</span>
+                    </button>
+                    {bookingList.map((b, idx) => {
+                      const progName = b.jenis_terapi || "Program Terapi";
+                      const isSelected = selectedProgressProgram.toLowerCase() === progName.toLowerCase();
+                      const logCount = patientLogs.filter((l: any) =>
+                        (l.program_name || "").toLowerCase().includes(progName.toLowerCase()) ||
+                        progName.toLowerCase().includes((l.program_name || "").toLowerCase())
+                      ).length;
+                      return (
+                        <button
+                          key={b.id || idx}
+                          onClick={() => setSelectedProgressProgram(progName)}
+                          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-purple-600 text-white border-purple-600 shadow-md"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-purple-50 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          <span>{getProgramTitle(progName)}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isSelected ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
+                            {logCount}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Visual Progress Gauges & Aspect Skill Breakdown Chart */}
+                {activeLogs.length > 0 && (
+                  <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-5">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                      <BarChart2 className="h-4 w-4 text-purple-600" />
+                      Visual Progress & Breakdown Aspek Tumbuh Kembang (Tampil Di Portal Orang Tua)
+                    </h4>
+
+                    {/* Gauges Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                      {/* Gauge 1: Sesi Counter */}
+                      <div className="bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 flex flex-col justify-between gap-2.5">
+                        <span className="text-[11px] font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider">Penyelesaian Sesi Terapi</span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-black text-blue-700 dark:text-blue-400">{completedSesi}</span>
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">/ {totalSesi} Sesi ({percentSesi}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                          <div className="bg-blue-600 h-full rounded-full transition-all duration-500" style={{ width: `${percentSesi}%` }} />
+                        </div>
+                      </div>
+
+                      {/* Gauge 2: Overall Score */}
+                      <div className="bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 rounded-xl p-4 flex flex-col justify-between gap-2.5">
+                        <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">Rata-Rata Evaluation Score</span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400">{avgScore}%</span>
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 dark:bg-emerald-900/60 dark:text-emerald-300 px-2 py-0.5 rounded-full">
+                            {avgScore >= 80 ? "Sangat Baik" : avgScore >= 60 ? "Baik" : "Cukup"}
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                          <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${avgScore}%` }} />
+                        </div>
+                      </div>
+
+                      {/* Gauge 3: Status Milestone */}
+                      <div className="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 rounded-xl p-4 flex flex-col justify-between gap-2 shadow-xs">
+                        <span className="text-[11px] font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">Status Milestone Terkini</span>
+                        <span className="text-sm font-black text-amber-800 dark:text-amber-300 capitalize flex items-center gap-1.5">
+                          {latestLog?.status_pencapaian === 'melampaui_target' ? (
+                            <>
+                              <Sparkles className="w-4 h-4 text-amber-600 inline" />
+                              <span>Melampaui Target</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4 text-emerald-600 inline" />
+                              <span>Sesuai Target Evaluasi</span>
+                            </>
+                          )}
+                        </span>
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold leading-tight">
+                          Anak menunjukkan respon positif konsisten di setiap sesi stimulasi terapis.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Aspect Skills Breakdown Bars */}
+                    <div className="space-y-3 pt-1">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                        Capaian 5 Aspek Tumbuh Kembang Terkini:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                        {[
+                          { label: "Atensi & Fokus", icon: <Eye className="w-3.5 h-3.5 text-blue-500" />, score: aspect.atensi_fokus ?? 80, color: "bg-blue-500" },
+                          { label: "Artikulasi Wicara", icon: <Volume2 className="w-3.5 h-3.5 text-emerald-500" />, score: aspect.artikulasi_wicara ?? 75, color: "bg-emerald-500" },
+                          { label: "Regulasi Emosi", icon: <Heart className="w-3.5 h-3.5 text-purple-500" />, score: aspect.regulasi_emosi ?? 85, color: "bg-purple-500" },
+                          { label: "Kepatuhan Instruksi", icon: <CheckCircle className="w-3.5 h-3.5 text-amber-500" />, score: aspect.kepatuhan_instruksi ?? 70, color: "bg-amber-500" },
+                          { label: "Sosialisasi", icon: <Activity className="w-3.5 h-3.5 text-rose-500" />, score: aspect.sosialisasi ?? 75, color: "bg-rose-500" },
+                        ].map((asp, idx) => (
+                          <div key={idx} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 flex flex-col gap-1.5">
+                            <div className="flex justify-between items-center text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                              <div className="flex items-center gap-1.5 truncate">
+                                {asp.icon}
+                                <span className="truncate">{asp.label}</span>
+                              </div>
+                              <span className="text-blue-600 dark:text-blue-400 font-extrabold">{asp.score}%</span>
+                            </div>
+                            <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                              <div className={`${asp.color} h-full rounded-full transition-all duration-500`} style={{ width: `${asp.score}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Existing Progress Logs Timeline */}
+                <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
+                  <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                    Riwayat Perkembangan Sesi Terapi (
+                    {selectedProgressProgram === "all"
+                      ? `${patientLogs.length} Sesi`
+                      : `${activeLogs.length} Sesi ${getProgramTitle(selectedProgressProgram)}`}
+                    )
+                  </h3>
+
+                  {loadingLogs ? (
+                    <div className="py-8 text-center text-xs text-slate-500 animate-pulse">Memuat log perkembangan sesi...</div>
+                  ) : activeLogs.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <AlertCircle className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Belum ada log perkembangan sesi terapi.</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Gunakan formulir di bawah untuk menambahkan catatan perkembangan sesi pertama pasien ini.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                      {activeLogs.map((log: any) => (
+                        <div key={log.id} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2.5">
                           <div className="flex justify-between items-center flex-wrap gap-2">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-extrabold text-xs text-blue-700 dark:text-blue-400">
@@ -718,6 +824,11 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                               {log.program_name && (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
                                   {getProgramTitle(log.program_name)}
+                                </span>
+                              )}
+                              {log.progress_score !== undefined && log.progress_score !== null && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/60">
+                                  Skor: {log.progress_score}%
                                 </span>
                               )}
                             </div>
@@ -738,108 +849,265 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                           )}
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Form Add New Progress Log With Full Manageable Parameters */}
+                <form onSubmit={handleSubmitNewLog} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
+                  <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <Plus className="h-4 w-4 text-blue-600" />
+                    Tambah Log Perkembangan Sesi Baru (Kelola Semua Parameter Portal)
+                  </h3>
+
+                  {/* Row 1: Program, Sesi, Total Sesi, Tanggal */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                      <label className="font-bold text-slate-600 dark:text-slate-400">Program Terapi *</label>
+                      <select
+                        required
+                        value={logForm.program_name || bookingList[0]?.jenis_terapi || "Program Terapi & Stimulasi"}
+                        onChange={(e) => setLogForm({ ...logForm, program_name: e.target.value })}
+                        className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold text-slate-900 dark:text-slate-100"
+                      >
+                        {bookingList.map((b, idx) => (
+                          <option key={b.id || idx} value={b.jenis_terapi || "Program Terapi & Stimulasi"}>
+                            {getProgramTitle(b.jenis_terapi)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-600 dark:text-slate-400">Sesi Ke-</label>
+                      <input
+                        type="number"
+                        required
+                        value={logForm.session_number}
+                        onChange={(e) => setLogForm({ ...logForm, session_number: Number(e.target.value) })}
+                        className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-600 dark:text-slate-400">Total Sesi Paket</label>
+                      <input
+                        type="number"
+                        required
+                        value={logForm.total_sessions}
+                        onChange={(e) => setLogForm({ ...logForm, total_sessions: Number(e.target.value) })}
+                        className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-600 dark:text-slate-400">Tanggal Sesi</label>
+                      <input
+                        type="date"
+                        required
+                        value={logForm.session_date}
+                        onChange={(e) => setLogForm({ ...logForm, session_date: e.target.value })}
+                        className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold"
+                      />
+                    </div>
                   </div>
-                )}
+
+                  {/* Row 2: Evaluasi Score & Status Pencapaian */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="font-bold text-slate-600 dark:text-slate-400 flex justify-between">
+                        <span>Skor Evaluasi Sesi Saja (0 - 100%)</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-extrabold">{logForm.progress_score}%</span>
+                      </label>
+                      <div className="flex items-center gap-3 mt-1">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={logForm.progress_score}
+                          onChange={(e) => setLogForm({ ...logForm, progress_score: Number(e.target.value) })}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={logForm.progress_score}
+                          onChange={(e) => setLogForm({ ...logForm, progress_score: Number(e.target.value) })}
+                          className="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-center font-bold text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-600 dark:text-slate-400">Status Pencapaian Milestone</label>
+                      <select
+                        value={logForm.status_pencapaian}
+                        onChange={(e) => setLogForm({ ...logForm, status_pencapaian: e.target.value })}
+                        className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold"
+                      >
+                        <option value="sesuai_target">Sesuai Target Evaluasi</option>
+                        <option value="melampaui_target">Melampaui Target</option>
+                        <option value="perlu_pendampingan">Perlu Pendampingan Ekstra</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Aspect Scores Management Sliders */}
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-3 text-xs">
+                    <span className="font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
+                      Penilaian 5 Aspek Tumbuh Kembang Pasien (Skala 0 - 100%):
+                    </span>
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                      <div>
+                        <label className="font-bold text-[11px] text-slate-600 dark:text-slate-400 flex justify-between">
+                          <span>Atensi & Fokus</span>
+                          <span className="text-blue-600">{logForm.aspect_scores.atensi_fokus}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={logForm.aspect_scores.atensi_fokus}
+                          onChange={(e) =>
+                            setLogForm({
+                              ...logForm,
+                              aspect_scores: { ...logForm.aspect_scores, atensi_fokus: Number(e.target.value) },
+                            })
+                          }
+                          className="mt-1 w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-[11px] text-slate-600 dark:text-slate-400 flex justify-between">
+                          <span>Artikulasi Wicara</span>
+                          <span className="text-emerald-600">{logForm.aspect_scores.artikulasi_wicara}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={logForm.aspect_scores.artikulasi_wicara}
+                          onChange={(e) =>
+                            setLogForm({
+                              ...logForm,
+                              aspect_scores: { ...logForm.aspect_scores, artikulasi_wicara: Number(e.target.value) },
+                            })
+                          }
+                          className="mt-1 w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-[11px] text-slate-600 dark:text-slate-400 flex justify-between">
+                          <span>Regulasi Emosi</span>
+                          <span className="text-purple-600">{logForm.aspect_scores.regulasi_emosi}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={logForm.aspect_scores.regulasi_emosi}
+                          onChange={(e) =>
+                            setLogForm({
+                              ...logForm,
+                              aspect_scores: { ...logForm.aspect_scores, regulasi_emosi: Number(e.target.value) },
+                            })
+                          }
+                          className="mt-1 w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-[11px] text-slate-600 dark:text-slate-400 flex justify-between">
+                          <span>Kepatuhan Instruksi</span>
+                          <span className="text-amber-600">{logForm.aspect_scores.kepatuhan_instruksi}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={logForm.aspect_scores.kepatuhan_instruksi}
+                          onChange={(e) =>
+                            setLogForm({
+                              ...logForm,
+                              aspect_scores: { ...logForm.aspect_scores, kepatuhan_instruksi: Number(e.target.value) },
+                            })
+                          }
+                          className="mt-1 w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-600"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-[11px] text-slate-600 dark:text-slate-400 flex justify-between">
+                          <span>Sosialisasi</span>
+                          <span className="text-rose-600">{logForm.aspect_scores.sosialisasi}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={logForm.aspect_scores.sosialisasi}
+                          onChange={(e) =>
+                            setLogForm({
+                              ...logForm,
+                              aspect_scores: { ...logForm.aspect_scores, sosialisasi: Number(e.target.value) },
+                            })
+                          }
+                          className="mt-1 w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-600"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-xs">
+                    <label className="font-bold text-slate-600 dark:text-slate-400">Fokus Latihan Sesi Ini</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: Penguatan otot bicara A-I-U-E-O & Atensi visual"
+                      value={logForm.fokus_latihan}
+                      onChange={(e) => setLogForm({ ...logForm, fokus_latihan: e.target.value })}
+                      className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-semibold"
+                    />
+                  </div>
+
+                  <div className="text-xs">
+                    <label className="font-bold text-slate-600 dark:text-slate-400">Catatan Terapis</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Tuliskan catatan detail hasil sesi terapi hari ini..."
+                      value={logForm.catatan_terapis}
+                      onChange={(e) => setLogForm({ ...logForm, catatan_terapis: e.target.value })}
+                      className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2"
+                    />
+                  </div>
+
+                  <div className="text-xs">
+                    <label className="font-bold text-slate-600 dark:text-slate-400">Rekomendasi Latihan Di Rumah (Untuk Orang Tua)</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Tuliskan panduan instruksi latihan di rumah untuk orang tua..."
+                      value={logForm.rekomendasi_ortu}
+                      onChange={(e) => setLogForm({ ...logForm, rekomendasi_ortu: e.target.value })}
+                      className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2"
+                    />
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <Button type="submit" disabled={savingLog} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5">
+                      <Save className="h-4 w-4" />
+                      {savingLog ? "Menyimpan..." : "Simpan Log Perkembangan Sesi"}
+                    </Button>
+                  </div>
+                </form>
               </div>
-
-              {/* Form Add New Progress Log */}
-              <form onSubmit={handleSubmitNewLog} className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
-                <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <Plus className="h-4 w-4 text-blue-600" />
-                  Tambah Log Perkembangan Sesi Baru
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-                  <div>
-                    <label className="font-bold text-slate-600 dark:text-slate-400">Program Terapi *</label>
-                    <select
-                      required
-                      value={logForm.program_name || bookingList[0]?.jenis_terapi || "Program Terapi & Stimulasi"}
-                      onChange={(e) => setLogForm({ ...logForm, program_name: e.target.value })}
-                      className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold text-slate-900 dark:text-slate-100"
-                    >
-                      {bookingList.map((b, idx) => (
-                        <option key={b.id || idx} value={b.jenis_terapi || "Program Terapi & Stimulasi"}>
-                          {getProgramTitle(b.jenis_terapi)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-600 dark:text-slate-400">Sesi Ke-</label>
-                    <input
-                      type="number"
-                      required
-                      value={logForm.session_number}
-                      onChange={(e) => setLogForm({ ...logForm, session_number: Number(e.target.value) })}
-                      className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-600 dark:text-slate-400">Total Sesi Paket</label>
-                    <input
-                      type="number"
-                      required
-                      value={logForm.total_sessions}
-                      onChange={(e) => setLogForm({ ...logForm, total_sessions: Number(e.target.value) })}
-                      className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-600 dark:text-slate-400">Tanggal Sesi</label>
-                    <input
-                      type="date"
-                      required
-                      value={logForm.session_date}
-                      onChange={(e) => setLogForm({ ...logForm, session_date: e.target.value })}
-                      className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-bold"
-                    />
-                  </div>
-                </div>
-
-                <div className="text-xs">
-                  <label className="font-bold text-slate-600 dark:text-slate-400">Fokus Latihan Sesi Ini</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Penguatan otot bicara A-I-U-E-O & Atensi visual"
-                    value={logForm.fokus_latihan}
-                    onChange={(e) => setLogForm({ ...logForm, fokus_latihan: e.target.value })}
-                    className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 font-semibold"
-                  />
-                </div>
-
-                <div className="text-xs">
-                  <label className="font-bold text-slate-600 dark:text-slate-400">Catatan Terapis</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Tuliskan catatan detail hasil sesi terapi hari ini..."
-                    value={logForm.catatan_terapis}
-                    onChange={(e) => setLogForm({ ...logForm, catatan_terapis: e.target.value })}
-                    className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2"
-                  />
-                </div>
-
-                <div className="text-xs">
-                  <label className="font-bold text-slate-600 dark:text-slate-400">Rekomendasi Latihan Di Rumah (Untuk Orang Tua)</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Tuliskan panduan instruksi latihan di rumah untuk orang tua..."
-                    value={logForm.rekomendasi_ortu}
-                    onChange={(e) => setLogForm({ ...logForm, rekomendasi_ortu: e.target.value })}
-                    className="mt-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2"
-                  />
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <Button type="submit" disabled={savingLog} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5">
-                    <Save className="h-4 w-4" />
-                    {savingLog ? "Menyimpan..." : "Simpan Log Perkembangan Sesi"}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          )}
+            );
+          })()}
 
           {/* TAB 3: PROFIL PASIEN & TERAPIS */}
           {activeTab === "profile" && (
