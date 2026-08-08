@@ -191,8 +191,9 @@ export default function InvoicesPage() {
   const handleSendWa = async (id: string | number) => {
     setSendingWa(id)
     try {
-      await apiFetch(`/admin/invoices/${id}/send-whatsapp`, { method: 'POST' })
-      toast.success('WhatsApp berhasil dikirim!')
+      const res: any = await apiFetch(`/admin/invoices/${id}/send-whatsapp`, { method: 'POST' })
+      fetchAll()
+      toast.success(res?.recipient ? `WhatsApp invoice berhasil dikirim ke ${res.recipient}!` : 'WhatsApp invoice berhasil dikirim!')
     } catch (e: any) {
       toast.error(e.message ?? 'Gagal mengirim WhatsApp')
     } finally {
