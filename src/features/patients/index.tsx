@@ -218,7 +218,12 @@ export function Patients() {
   const fetchLogsForPatient = async (patientId: string | number) => {
     setLoadingLogs(true);
     try {
-      const data = await api.get<any[]>(`/therapy-progress/patient/${patientId}`);
+      let data;
+      try {
+        data = await api.get<any[]>(`/admin/therapy-progress/patient/${patientId}`);
+      } catch {
+        data = await api.get<any[]>(`/therapy-progress/patient/${patientId}`);
+      }
       if (Array.isArray(data)) {
         setPatientLogs(data);
       } else {
@@ -327,7 +332,11 @@ export function Patients() {
       ...formData,
       patient_id: Number(selectedPatient.id),
     };
-    await api.post("/therapy-progress", payload);
+    try {
+      await api.post("/admin/therapy-progress", payload);
+    } catch {
+      await api.post("/therapy-progress", payload);
+    }
     fetchLogsForPatient(selectedPatient.id);
   };
 
