@@ -11,6 +11,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { SimplePagination } from '@/components/simple-pagination'
 
 interface Patient {
   id: string | number
@@ -65,6 +66,8 @@ export default function AppointmentsPage() {
   const [filterDate, setFilterDate] = useState('')
   const [filterTherapist, setFilterTherapist] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   // Dialog
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -344,7 +347,9 @@ export default function AppointmentsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((a) => (
+                  filtered
+                    .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                    .map((a) => (
                     <tr key={a.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4 font-semibold text-foreground">
                         {a.patient_name ?? patients.find((p) => p.id === a.patient_id)?.nama_lengkap ?? `#${a.patient_id}`}
@@ -386,6 +391,13 @@ export default function AppointmentsPage() {
               </tbody>
             </table>
           </div>
+          <SimplePagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filtered.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </Main>
 

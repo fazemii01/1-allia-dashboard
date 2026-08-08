@@ -13,6 +13,7 @@ import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { MonthlyReportSection } from './components/monthly-report'
+import { SimplePagination } from '@/components/simple-pagination'
 
 interface Patient {
   id: string | number
@@ -79,6 +80,8 @@ export default function InvoicesPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({
@@ -291,7 +294,9 @@ export default function InvoicesPage() {
                     </td>
                   </tr>
                 ) : (
-                  enrichedInvoices.map((inv) => {
+                  enrichedInvoices
+                    .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                    .map((inv) => {
                     const totalVal = inv.total ?? inv.total_amount ?? 0;
                     const isDp = inv.payment_type === 'dp';
                     const isCustomPayment = inv.payment_type === 'custom';
@@ -442,6 +447,13 @@ export default function InvoicesPage() {
               </tbody>
             </table>
           </div>
+          <SimplePagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={enrichedInvoices.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </Main>
 

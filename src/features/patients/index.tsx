@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { Search, Eye, Filter, AlertCircle, MessageSquare, RefreshCw, X, FileText, User, HeartHandshake, Download, Printer } from "lucide-react";
+import { Search, Eye, Filter, RefreshCw, Download } from "lucide-react";
 import { PatientPdfBuilder } from "./components/patient-pdf-builder";
+import { PatientDetailModal } from "./components/patient-detail-modal";
+import { SimplePagination } from "@/components/simple-pagination";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -16,10 +18,10 @@ interface TherapistItem {
   is_active?: boolean;
 }
 
-interface Patient {
+export interface Patient {
   id: string | number;
   nama_lengkap: string;
-  usia?: string | number;
+  usia?: number | string;
   jenis_kelamin?: string;
   tempat_lahir?: string;
   tanggal_lahir?: string;
@@ -38,160 +40,31 @@ interface Patient {
   therapist_id?: number | null;
   catatan_internal?: string;
   created_at?: string;
-  
-  // Extended questionnaire objects / top-level props
   formulir_wicara?: Record<string, any>;
   formulir_hipoterapi?: Record<string, any>;
-
-  // Legacy / top-level fallback fields
-  masalah_bicara?: string;
-  sudah_berapa_lama_wicara?: string;
-  dalam_penanganan_lain?: any;
-  nama_penanganan_lain?: string;
-  bahasa_sehari_hari_wicara?: string;
-  gangguan_utama?: string[];
-  keluhan_lainnya?: string;
-  pengurus_utama_wicara?: string[];
-  masalah_kehamilan_wicara?: any;
-  detail_masalah_kehamilan_wicara?: string;
-  riwayat_keterlambatan?: any;
-  detail_keterlambatan?: string;
-  harapan_terapi_wicara?: string;
-  pernah_trauma_wicara?: any;
-  detail_trauma_wicara?: string;
-  pernah_terapi_sebelumnya?: any;
-  ada_kekhawatiran_terapi?: any;
-  detail_kekhawatiran?: string;
-
-  keluhan_utama?: string[];
-  penjelasan_keluhan?: string;
-  sudah_berapa_lama_hipo?: string;
-  dalam_penanganan_dokter?: any;
-  nama_dokter?: string;
-  pengurus_utama_hipo?: string[];
-  bahasa_sehari_hari_hipo?: string;
-  masalah_kehamilan_hipo?: any;
-  detail_masalah_kehamilan_hipo?: string;
-  pernah_trauma_hipo?: any;
-  detail_trauma_hipo?: string;
-  harapan_terapi_hipo?: string;
-  tempat_favorit?: string[];
-  hobby?: string[];
-  pernah_hipnoterapi?: any;
-  ada_ketakutan_terapi?: any;
-  detail_ketakutan?: string;
-
-  persetujuan_syarat_ketentuan?: any;
-  declarationAccepted?: any;
-  persetujuan_dokumentasi?: string;
-  penandatangan_kota?: string;
-  penandatangan_tanggal?: string;
+  bookings?: any[];
+  [key: string]: any;
 }
-
-const getProgramTerapiLabel = (jenis_terapi?: string) => {
-  if (!jenis_terapi) return "🩺 Program Terapi";
-  if (jenis_terapi === "terapi_wicara") return "🗣️ Terapi Wicara";
-  if (jenis_terapi === "hipoterapi") return "🧠 Hipoterapi";
-
-  const lower = jenis_terapi.toLowerCase();
-  let icon = "🩺";
-  if (lower.includes("wicara")) icon = "🗣️";
-  else if (lower.includes("hipo") || lower.includes("fobia") || lower.includes("emosi")) icon = "🧠";
-  else if (lower.includes("konsultasi")) icon = "💬";
-  else if (lower.includes("tumbuh") || lower.includes("skrining")) icon = "📏";
-  else if (lower.includes("sidik") || lower.includes("jari") || lower.includes("bakat")) icon = "👆";
-
-  return `${icon} ${jenis_terapi}`;
-};
 
 export function Patients() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [therapists, setTherapists] = useState<TherapistItem[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTerapi, setFilterTerapi] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const [progressModalOpen, setProgressModalOpen] = useState(false);
+  // Modal & Patient Detail state
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [pdfPatient, setPdfPatient] = useState<Patient | null>(null);
+  const [selectedPdfProgram, setSelectedPdfProgram] = useState<string | undefined>(undefined);
+  
   const [patientLogs, setPatientLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
-  const [savingLog, setSavingLog] = useState(false);
-  const [logForm, setLogForm] = useState({
-    session_number: 1,
-    total_sessions: 8,
-    session_date: new Date().toISOString().slice(0, 10),
-    fokus_latihan: "",
-    progress_score: 0,
-    aspect_scores: {
-      atensi_fokus: 0,
-      artikulasi_wicara: 0,
-      regulasi_emosi: 0,
-      kepatuhan_instruksi: 0,
-      sosialisasi: 0,
-    },
-    catatan_terapis: "",
-    rekomendasi_ortu: "",
-    status_pencapaian: "sesuai_target",
-  });
-
-  const fetchPatientLogs = async (patientId: string | number) => {
-    setLoadingLogs(true);
-    try {
-      if (typeof patientId === "number" || (!String(patientId).startsWith("demo") && !String(patientId).startsWith("local"))) {
-        const logs = await api.get<any[]>(`/admin/therapy-progress/patient/${patientId}`);
-        setPatientLogs(logs || []);
-        if (logs && logs.length > 0) {
-          const maxSesi = Math.max(...logs.map((l: any) => l.session_number || 0));
-          setLogForm((f) => ({ ...f, session_number: maxSesi + 1 }));
-        }
-      } else {
-        const localKey = `progress_logs_${patientId}`;
-        const localLogs = JSON.parse(localStorage.getItem(localKey) || "[]");
-        setPatientLogs(localLogs);
-        if (localLogs.length > 0) {
-          const maxSesi = Math.max(...localLogs.map((l: any) => l.session_number || 0));
-          setLogForm((f) => ({ ...f, session_number: maxSesi + 1 }));
-        }
-      }
-    } catch (err) {
-      console.warn("Failed to fetch therapy progress logs", err);
-    } finally {
-      setLoadingLogs(false);
-    }
-  };
-
-  const handleSaveLog = async () => {
-    if (!selectedPatient) return;
-    setSavingLog(true);
-    try {
-      const numericId = typeof selectedPatient.id === "number" ? selectedPatient.id : Number(String(selectedPatient.id).replace(/[^0-9]/g, '')) || 0;
-      const payload = {
-        patient_id: numericId,
-        therapist_id: selectedPatient.therapist_id || undefined,
-        program_name: selectedPatient.jenis_terapi || "Program Terapi & Stimulasi",
-        ...logForm,
-      };
-
-      if (typeof selectedPatient.id === "number" || (!String(selectedPatient.id).startsWith("demo") && !String(selectedPatient.id).startsWith("local"))) {
-        await api.post("/admin/therapy-progress", payload);
-      } else {
-        const localKey = `progress_logs_${selectedPatient.id}`;
-        const localLogs = JSON.parse(localStorage.getItem(localKey) || "[]");
-        localLogs.push({ ...payload, id: Date.now(), created_at: new Date().toISOString() });
-        localStorage.setItem(localKey, JSON.stringify(localLogs));
-      }
-      toast.success("Log perkembangan sesi berhasil disimpan!");
-      fetchPatientLogs(selectedPatient.id);
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Gagal menyimpan progress: " + (err.message || err));
-    } finally {
-      setSavingLog(false);
-    }
-  };
 
   const fetchTherapists = async () => {
     try {
@@ -237,11 +110,7 @@ export function Patients() {
         relasi_dengan_ibu: app.relasi_dengan_ibu,
         relasi_dengan_saudara: app.relasi_dengan_saudara,
         status: "baru",
-        persetujuan_syarat_ketentuan: app.persetujuan_syarat_ketentuan,
-        declarationAccepted: app.declarationAccepted,
-        persetujuan_dokumentasi: app.persetujuan_dokumentasi,
-        penandatangan_kota: app.penandatangan_kota,
-        penandatangan_tanggal: app.penandatangan_tanggal,
+        created_at: new Date().toISOString(),
         formulir_wicara: app.jenis_terapi?.toLowerCase().includes("wicara") ? {
           program_spesifik: app.program || app.program_detail,
           masalah_bicara: app.masalah_bicara,
@@ -306,10 +175,6 @@ export function Patients() {
         nama_ibu: app.nama_ibu,
         alamat: app.alamat,
         jenis_terapi: app.jenis_terapi,
-        pendidikan_anak: app.pendidikan_anak,
-        relasi_sosial: app.relasi_sosial,
-        relasi_dengan_ibu: app.relasi_dengan_ibu,
-        relasi_dengan_saudara: app.relasi_dengan_saudara,
         status: "baru",
       }));
       setPatients(formattedLocal);
@@ -323,12 +188,71 @@ export function Patients() {
     fetchPatients();
   }, []);
 
+  // Consolidate patients by normalized name & phone number so 1 row per unique patient is shown
+  const consolidatedPatients = useMemo(() => {
+    const map = new Map<string, Patient & { bookings: any[] }>();
+
+    patients.forEach((p) => {
+      const normName = (p.nama_lengkap || "").toLowerCase().trim();
+      const normPhone = (p.no_telepon || p.email_ortu || "").trim();
+      const key = `${normName}_${normPhone}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          ...p,
+          bookings: [p],
+        });
+      } else {
+        const existing = map.get(key)!;
+        existing.bookings.push(p);
+        if (!existing.email_ortu && p.email_ortu) existing.email_ortu = p.email_ortu;
+        if (!existing.no_telepon && p.no_telepon) existing.no_telepon = p.no_telepon;
+        if (!existing.therapist && p.therapist) existing.therapist = p.therapist;
+        if (p.status === "aktif" || p.status === "terjadwal") existing.status = p.status;
+      }
+    });
+
+    return Array.from(map.values());
+  }, [patients]);
+
+  const fetchLogsForPatient = async (patientId: string | number) => {
+    setLoadingLogs(true);
+    try {
+      const data = await api.get<any[]>(`/therapy-progress/patient/${patientId}`);
+      if (Array.isArray(data)) {
+        setPatientLogs(data);
+      } else {
+        setPatientLogs([]);
+      }
+    } catch {
+      setPatientLogs([]);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const handleOpenDetailModal = (p: Patient) => {
+    setSelectedPatient(p);
+    setIsDetailModalOpen(true);
+    fetchLogsForPatient(p.id);
+  };
+
   const handleUpdateStatus = async (id: string | number, newStatus: Patient["status"]) => {
     setPatients((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
     );
-    if (selectedPatient && selectedPatient.id === id) {
-      setSelectedPatient((prev) => (prev ? { ...prev, status: newStatus } : null));
+    if (selectedPatient) {
+      setSelectedPatient((prev) => {
+        if (!prev) return null;
+        const updatedBookings = (prev.bookings || [prev]).map((b) =>
+          b.id === id ? { ...b, status: newStatus } : b
+        );
+        return {
+          ...prev,
+          status: prev.id === id ? newStatus : prev.status,
+          bookings: updatedBookings,
+        };
+      });
     }
     if (typeof id === "number" || (!String(id).startsWith("demo") && !String(id).startsWith("local"))) {
       try {
@@ -347,8 +271,19 @@ export function Patients() {
       prev.map((p) => (p.id === id ? { ...p, therapist_id: therapistId, therapist: selectedObj || therapistIdStr } : p))
     );
 
-    if (selectedPatient && selectedPatient.id === id) {
-      setSelectedPatient((prev) => (prev ? { ...prev, therapist_id: therapistId, therapist: selectedObj || therapistIdStr } : null));
+    if (selectedPatient) {
+      setSelectedPatient((prev) => {
+        if (!prev) return null;
+        const updatedBookings = (prev.bookings || [prev]).map((b) =>
+          b.id === id ? { ...b, therapist_id: therapistId, therapist: selectedObj || therapistIdStr } : b
+        );
+        return {
+          ...prev,
+          therapist_id: prev.id === id ? therapistId : prev.therapist_id,
+          therapist: prev.id === id ? (selectedObj || therapistIdStr) : prev.therapist,
+          bookings: updatedBookings,
+        };
+      });
     }
 
     if (typeof id === "number" || (!String(id).startsWith("demo") && !String(id).startsWith("local"))) {
@@ -364,6 +299,19 @@ export function Patients() {
     setPatients((prev) =>
       prev.map((p) => (p.id === id ? { ...p, catatan_internal } : p))
     );
+    if (selectedPatient) {
+      setSelectedPatient((prev) => {
+        if (!prev) return null;
+        const updatedBookings = (prev.bookings || [prev]).map((b) =>
+          b.id === id ? { ...b, catatan_internal } : b
+        );
+        return {
+          ...prev,
+          catatan_internal: prev.id === id ? catatan_internal : prev.catatan_internal,
+          bookings: updatedBookings,
+        };
+      });
+    }
     if (typeof id === "number" || (!String(id).startsWith("demo") && !String(id).startsWith("local"))) {
       try {
         await api.patch(`/patients/${id}`, { catatan_internal });
@@ -373,12 +321,30 @@ export function Patients() {
     }
   };
 
-  const filteredPatients = patients.filter((p) => {
+  const handleSaveLogForModal = async (formData: any) => {
+    if (!selectedPatient) return;
+    const payload = {
+      ...formData,
+      patient_id: Number(selectedPatient.id),
+    };
+    await api.post("/therapy-progress", payload);
+    fetchLogsForPatient(selectedPatient.id);
+  };
+
+  const handleOpenPdfFromModal = (p: Patient, selectedProgram?: string) => {
+    setPdfPatient(p);
+    setSelectedPdfProgram(selectedProgram);
+    setIsPdfModalOpen(true);
+  };
+
+  const filteredPatients = consolidatedPatients.filter((p) => {
     const matchesSearch =
       (p.nama_lengkap || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.nama_ibu || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.no_telepon || "").includes(searchQuery);
-    const matchesTerapi = filterTerapi ? (p.jenis_terapi || "").includes(filterTerapi) : true;
+    const matchesTerapi = filterTerapi
+      ? (p.bookings || []).some((b: any) => (b.jenis_terapi || "").toLowerCase().includes(filterTerapi.toLowerCase()))
+      : true;
     const matchesStatus = filterStatus ? p.status === filterStatus : true;
     return matchesSearch && matchesTerapi && matchesStatus;
   });
@@ -391,82 +357,18 @@ export function Patients() {
       selesai: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200",
       dibatalkan: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border border-red-200",
     };
-    return styles[status] || "bg-gray-100 text-gray-800";
+    return styles[status] || "bg-slate-100 text-slate-800";
   };
 
-  const formatBoolean = (val: any) => {
-    if (val === true || val === "1" || val === 1 || val === "true") return "Ya";
-    if (val === false || val === "0" || val === 0 || val === "false") return "Tidak";
-    return val || "-";
-  };
-
-  const isFilledValue = (val: any): boolean => {
-    if (Array.isArray(val)) return val.length > 0;
-    if (val === undefined || val === null || val === "") return false;
-    if (val === "0" || val === 0) return false;
-    return true;
-  };
-
-  const hasNonWicaraData = (p: Patient) => {
-    if (p.formulir_hipoterapi && Object.keys(p.formulir_hipoterapi).length > 0) {
-      const keys = Object.keys(p.formulir_hipoterapi);
-      return keys.some((k) => isFilledValue(p.formulir_hipoterapi![k]));
-    }
-    if (p.keluhan_utama && p.keluhan_utama.length > 0) return true;
-    if (p.penjelasan_keluhan) return true;
-    if (p.sudah_berapa_lama_hipo) return true;
-    if (p.harapan_terapi_hipo) return true;
-    return false;
-  };
-
-  const hasWicaraData = (p: Patient) => {
-    if (p.formulir_wicara && Object.keys(p.formulir_wicara).length > 0) {
-      const keys = Object.keys(p.formulir_wicara);
-      return keys.some((k) => isFilledValue(p.formulir_wicara![k]));
-    }
-    if (p.masalah_bicara) return true;
-    if (p.sudah_berapa_lama_wicara) return true;
-    if (p.bahasa_sehari_hari_wicara) return true;
-    if (p.gangguan_utama && p.gangguan_utama.length > 0) return true;
-    if (p.harapan_terapi_wicara) return true;
-    return false;
-  };
-
-  const isWicaraType = (p: Patient) => (p.jenis_terapi || "").toLowerCase().includes("wicara");
-
-  const shouldShowWicaraForm = (p: Patient) => {
-    if (hasNonWicaraData(p)) return false;
-    if (hasWicaraData(p)) return true;
-    return isWicaraType(p);
-  };
-
-  const shouldShowNonWicaraForm = (p: Patient) => {
-    if (hasWicaraData(p)) return false;
-    if (hasNonWicaraData(p)) return true;
-    return !isWicaraType(p);
-  };
-
-  const renderChips = (items?: any[]) => {
-    if (!items || !Array.isArray(items) || items.length === 0) return <span className="text-muted-foreground">-</span>;
-    return (
-      <div className="flex flex-wrap gap-1 mt-1">
-        {items.map((item, i) => (
-          <span key={i} className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[11px] font-bold">
-            {item}
-          </span>
-        ))}
-      </div>
-    );
-  };
-
-  const getCurrentTherapistValue = (patient: Patient) => {
-    if (patient.therapist_id) return String(patient.therapist_id);
-    if (typeof patient.therapist === 'object' && patient.therapist?.id) return String(patient.therapist.id);
-    if (typeof patient.therapist === 'string') {
-      const match = therapists.find((t) => t.name === patient.therapist);
-      if (match) return String(match.id);
-    }
-    return "";
+  const getProgramTerapiLabel = (jenis?: string) => {
+    if (!jenis) return "Program Terapi";
+    const lower = jenis.toLowerCase();
+    if (lower.includes("wicara")) return "Terapi Wicara";
+    if (lower.includes("hipo")) return "Hipoterapi & Sensori";
+    if (lower.includes("konsultasi")) return "Konsultasi Tumbuh Kembang";
+    if (lower.includes("skrining")) return "Skrining Tumbuh Kembang";
+    if (lower.includes("bakat") || lower.includes("sidik")) return "Analisa Sidik Jari Bakat";
+    return jenis;
   };
 
   return (
@@ -491,12 +393,12 @@ export function Patients() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Pendaftaran & Data Pasien</h2>
             <p className="text-muted-foreground text-sm">
-              Kelola data lengkap formulir apply, ubah status, dan jadwalkan terapis.
+              Kelola data lengkap pendaftaran pasien, inspeksi program yang diambil, dan atur penugasan terapis.
             </p>
           </div>
           <button
             onClick={() => { fetchTherapists(); fetchPatients(); }}
-            className="inline-flex items-center gap-1.5 bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs font-bold px-3 py-2 rounded-md transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs font-bold px-3 py-2 rounded-md transition-all cursor-pointer shadow-xs"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh Data
           </button>
@@ -515,11 +417,10 @@ export function Patients() {
             className="bg-background border border-input rounded-md px-3 py-1.5 text-sm"
           >
             <option value="">Semua Program Terapi</option>
-            {Array.from(new Set(patients.map((p) => p.jenis_terapi).filter(Boolean))).map((opt) => (
-              <option key={opt} value={opt}>
-                {getProgramTerapiLabel(opt)}
-              </option>
-            ))}
+            <option value="wicara">Terapi Wicara</option>
+            <option value="hipo">Hipoterapi & Sensori</option>
+            <option value="konsultasi">Konsultasi Tumbuh Kembang</option>
+            <option value="bakat">Analisa Sidik Jari Bakat</option>
           </select>
 
           <select
@@ -536,812 +437,113 @@ export function Patients() {
           </select>
         </div>
 
-        {/* Patients Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Left Patients Table Column */}
-          <div className={`${selectedPatient ? "lg:col-span-6" : "lg:col-span-12"} transition-all duration-300`}>
-            <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-muted/60 border-b border-border text-xs font-bold text-muted-foreground uppercase">
-                      <th className="p-3.5">Anak</th>
-                      <th className="p-3.5">Orang Tua</th>
-                      <th className="p-3.5">Program Terapi</th>
-                      <th className="p-3.5">Status</th>
-                      <th className="p-3.5 text-right">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border text-sm">
-                    {filteredPatients.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="p-8 text-center text-muted-foreground font-semibold">
-                          Tidak ada data pendaftaran ditemukan.
+        {/* Patients Main Table */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-muted/60 border-b border-border text-xs font-bold text-muted-foreground uppercase">
+                  <th className="p-4">Anak</th>
+                  <th className="p-4">Orang Tua & Kontak</th>
+                  <th className="p-4">Program Didaftarkan</th>
+                  <th className="p-4">Status Pasien</th>
+                  <th className="p-4 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border text-sm">
+                {filteredPatients.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-muted-foreground font-semibold">
+                      Tidak ada data pendaftaran pasien ditemukan.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPatients
+                    .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                    .map((p) => {
+                    const bookings = p.bookings || [p];
+                    return (
+                      <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-4">
+                          <div className="font-extrabold text-foreground text-sm">{p.nama_lengkap}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {p.usia ? `${p.usia} Thn` : ''} {p.jenis_kelamin ? `• ${p.jenis_kelamin}` : ''}
+                          </div>
+                        </td>
+
+                        <td className="p-4">
+                          <div className="font-semibold text-foreground">{p.nama_ibu || p.nama_ayah || "-"}</div>
+                          <div className="text-xs text-muted-foreground font-mono mt-0.5">{p.no_telepon || "-"}</div>
+                        </td>
+
+                        <td className="p-4">
+                          <div className="flex flex-wrap gap-1.5">
+                            {bookings.map((b: any, bIdx: number) => (
+                              <span
+                                key={b.id || bIdx}
+                                className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-lg text-xs font-bold shadow-2xs"
+                              >
+                                {getProgramTerapiLabel(b.jenis_terapi)}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+
+                        <td className="p-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${getStatusBadge(p.status)}`}>
+                            {p.status}
+                          </span>
+                        </td>
+
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDetailModal(p)}
+                              className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+                            >
+                              <Eye size={13} /> Detail Pasien
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                    ) : (
-                      filteredPatients.map((p) => {
-                        const isWicara = (p.jenis_terapi || "").toLowerCase().includes("wicara");
-                        const isSelected = selectedPatient?.id === p.id;
-                        return (
-                          <tr key={p.id} className={`hover:bg-muted/40 transition-colors ${isSelected ? "bg-primary/5" : ""}`}>
-                            <td className="p-3.5">
-                              <div className="font-bold text-foreground">{p.nama_lengkap}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {p.usia ? `${p.usia} Thn` : ''} {p.jenis_kelamin ? `• ${p.jenis_kelamin}` : ''}
-                              </div>
-                            </td>
-                            <td className="p-3.5">
-                              <div className="font-semibold text-foreground">{p.nama_ibu || p.nama_ayah || "-"}</div>
-                              <div className="text-xs text-muted-foreground">{p.no_telepon || "-"}</div>
-                            </td>
-                            <td className="p-3.5 font-semibold text-foreground text-xs">
-                              {getProgramTerapiLabel(p.jenis_terapi)}
-                            </td>
-                            <td className="p-3.5">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${getStatusBadge(p.status)}`}>
-                                {p.status}
-                              </span>
-                            </td>
-                            <td className="p-3.5 text-right flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPdfPatient(p);
-                                  setIsPdfModalOpen(true);
-                                }}
-                                title="Download PDF Formulir Rekapitulasi Pasien"
-                                className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-md text-xs font-bold shadow-xs transition-all cursor-pointer"
-                              >
-                                <Download size={13} /> PDF
-                              </button>
-                              <button
-                                onClick={() => setSelectedPatient(p)}
-                                className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-md cursor-pointer transition-all shadow-sm ${
-                                  isSelected
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground"
-                                }`}
-                              >
-                                <Eye size={13} /> {isSelected ? "Melihat" : "Detail"}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-
-          {/* Right Full Detail & Form Inspector Column */}
-          {selectedPatient && (
-            <div className="lg:col-span-6 bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col gap-6 max-h-[85vh] overflow-y-auto relative">
-              <div className="flex justify-between items-start border-b border-border -mt-6 -mx-6 p-6 mb-2 sticky top-0 bg-card z-20 rounded-t-xl shadow-xs">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-xl text-foreground">{selectedPatient.nama_lengkap}</h3>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${getStatusBadge(selectedPatient.status)}`}>
-                      {selectedPatient.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-primary font-bold uppercase tracking-wider mt-1">
-                    {getProgramTerapiLabel(selectedPatient.jenis_terapi)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPdfPatient(selectedPatient);
-                      setIsPdfModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow transition-all cursor-pointer"
-                  >
-                    <Download size={14} /> PDF Formulir
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      fetchPatientLogs(selectedPatient.id);
-                      setProgressModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground hover:brightness-110 px-3 py-1.5 rounded-lg text-xs font-bold shadow transition-all cursor-pointer"
-                  >
-                    📊 Progress Sesi
-                  </button>
-                  <button
-                    onClick={() => setSelectedPatient(null)}
-                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-all cursor-pointer"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Status & Dynamic Therapist Admin Assignment Controls */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/30 p-4 rounded-xl border border-border">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Assign Terapis (dari Database)</label>
-                  <select
-                    value={getCurrentTherapistValue(selectedPatient)}
-                    onChange={(e) => handleAssignTherapist(selectedPatient.id, e.target.value)}
-                    className="bg-background border border-input rounded-md px-3 py-1.5 text-xs font-semibold w-full"
-                  >
-                    <option value="">— Belum Ditugaskan —</option>
-                    {therapists.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} {t.specialization ? `(${t.specialization})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Ubah Status</label>
-                  <div className="flex flex-wrap gap-1">
-                    {(["baru", "terjadwal", "aktif", "selesai", "dibatalkan"] as Patient["status"][]).map((st) => (
-                      <button
-                        key={st}
-                        onClick={() => handleUpdateStatus(selectedPatient.id, st)}
-                        className={`px-2 py-1 text-[10px] font-bold uppercase rounded border transition-all ${
-                          selectedPatient.status === st
-                            ? "bg-primary border-primary text-primary-foreground"
-                            : "bg-background border-input text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        {st}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 1: Identitas & Kontak */}
-              <div className="flex flex-col gap-3">
-                <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 border-b border-border pb-1">
-                  <User size={14} /> 1. Identitas Anak & Orang Tua
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Usia</span>
-                    <span className="font-bold text-foreground">{selectedPatient.usia || "-"} Tahun</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Jenis Kelamin</span>
-                    <span className="font-bold text-foreground capitalize">{selectedPatient.jenis_kelamin || "-"}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Tempat, Tgl Lahir</span>
-                    <span className="font-bold text-foreground">{selectedPatient.tempat_lahir || "-"}, {selectedPatient.tanggal_lahir || "-"}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Nama Ayah</span>
-                    <span className="font-bold text-foreground">{selectedPatient.nama_ayah || "-"}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Nama Ibu</span>
-                    <span className="font-bold text-foreground">{selectedPatient.nama_ibu || "-"}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Email Ortu</span>
-                    <span className="font-bold text-foreground truncate block">{selectedPatient.email_ortu || "-"}</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">No. WhatsApp</span>
-                    <span className="font-bold text-foreground flex items-center gap-2">
-                      {selectedPatient.no_telepon || "-"}
-                      {selectedPatient.no_telepon && (
-                        <a
-                          href={`https://wa.me/${selectedPatient.no_telepon.replace(/^0/, "62")}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-200 hover:bg-green-100"
-                        >
-                          <MessageSquare size={11} /> Chat WhatsApp
-                        </a>
-                      )}
-                    </span>
-                  </div>
-                  <div className="col-span-2 sm:col-span-3">
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Alamat Lengkap</span>
-                    <span className="font-bold text-foreground leading-relaxed block mt-0.5">{selectedPatient.alamat || "-"}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 2: Evaluasi Keadaan & Relasi */}
-              <div className="flex flex-col gap-3">
-                <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 border-b border-border pb-1">
-                  <HeartHandshake size={14} /> 2. Evaluasi Keadaan & Relasi Anak
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pendidikan Anak</span>
-                    <span className="font-bold text-foreground">{selectedPatient.pendidikan_anak || "-"}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Relasi Sosial</span>
-                    <span className="font-bold text-foreground capitalize">{selectedPatient.relasi_sosial || "-"}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Relasi dg Ibu</span>
-                    <span className="font-bold text-foreground capitalize">{selectedPatient.relasi_dengan_ibu || "-"}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Relasi dg Saudara</span>
-                    <span className="font-bold text-foreground capitalize">{selectedPatient.relasi_dengan_saudara || "-"}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 3: Detail Formulir Terapi / Konsultasi */}
-              <div className="flex flex-col gap-3">
-                <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 border-b border-border pb-1">
-                  <FileText size={14} /> 3. Detail Formulir {selectedPatient.jenis_terapi || "Apply Program Terapi"}
-                </h4>
-
-                {/* Render Wicara Form Data */}
-                {shouldShowWicaraForm(selectedPatient) && (
-                  <div className="flex flex-col gap-3 text-xs bg-muted/20 p-4 rounded-xl border border-border">
-                    <div className="font-bold text-xs text-primary flex items-center justify-between">
-                      <span>Detail Formulir Terapi Wicara</span>
-                      {(selectedPatient.formulir_wicara?.program_spesifik || selectedPatient.jenis_terapi) && (
-                        <span className="text-[11px] font-semibold text-muted-foreground bg-background px-2 py-0.5 rounded border border-border">
-                          {selectedPatient.formulir_wicara?.program_spesifik || selectedPatient.jenis_terapi}
-                        </span>
-                      )}
-                    </div>
-
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Masalah Bicara / Komunikasi Utama</span>
-                      <p className="font-bold text-foreground italic mt-0.5">
-                        {selectedPatient.formulir_wicara?.masalah_bicara || selectedPatient.masalah_bicara || "-"}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Durasi Keluhan</span>
-                        <span className="font-bold text-foreground">
-                          {selectedPatient.formulir_wicara?.sudah_berapa_lama || selectedPatient.sudah_berapa_lama_wicara || "-"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Bahasa Sehari-hari</span>
-                        <span className="font-bold text-foreground">
-                          {selectedPatient.formulir_wicara?.bahasa_sehari_hari || selectedPatient.bahasa_sehari_hari_wicara || "-"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Gangguan / Gejala Utama</span>
-                      {renderChips(selectedPatient.formulir_wicara?.gangguan_utama || selectedPatient.gangguan_utama)}
-                    </div>
-
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pengurus Utama Anak</span>
-                      {renderChips(selectedPatient.formulir_wicara?.pengurus_utama || selectedPatient.pengurus_utama_wicara)}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Penanganan Dokter/Terapis Lain?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_wicara?.dalam_penanganan_lain ?? selectedPatient.dalam_penanganan_lain)}
-                        </span>
-                        {(selectedPatient.formulir_wicara?.nama_penanganan_lain || selectedPatient.nama_penanganan_lain) && (
-                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_wicara?.nama_penanganan_lain || selectedPatient.nama_penanganan_lain})</div>
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pernah Terapi Sebelum di Allia Kids?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_wicara?.pernah_terapi_sebelumnya ?? selectedPatient.pernah_terapi_sebelumnya)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Masalah Kehamilan / Persalinan?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_wicara?.masalah_kehamilan ?? selectedPatient.masalah_kehamilan_wicara)}
-                        </span>
-                        {(selectedPatient.formulir_wicara?.detail_masalah_kehamilan || selectedPatient.detail_masalah_kehamilan_wicara) && (
-                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_wicara?.detail_masalah_kehamilan || selectedPatient.detail_masalah_kehamilan_wicara})</div>
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Riwayat Keterlambatan Bicara?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_wicara?.riwayat_keterlambatan ?? selectedPatient.riwayat_keterlambatan)}
-                        </span>
-                        {(selectedPatient.formulir_wicara?.detail_keterlambatan || selectedPatient.detail_keterlambatan) && (
-                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_wicara?.detail_keterlambatan || selectedPatient.detail_keterlambatan})</div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pernah Mengalami Trauma?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_wicara?.pernah_trauma ?? selectedPatient.pernah_trauma_wicara)}
-                        </span>
-                        {(selectedPatient.formulir_wicara?.detail_trauma || selectedPatient.detail_trauma_wicara) && (
-                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_wicara?.detail_trauma || selectedPatient.detail_trauma_wicara})</div>
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Ada Kekhawatiran Terapi?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_wicara?.ada_kekhawatiran_terapi ?? selectedPatient.ada_kekhawatiran_terapi)}
-                        </span>
-                        {(selectedPatient.formulir_wicara?.detail_kekhawatiran || selectedPatient.detail_kekhawatiran) && (
-                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_wicara?.detail_kekhawatiran || selectedPatient.detail_kekhawatiran})</div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Harapan Setelah Terapi</span>
-                      <p className="font-bold text-foreground mt-0.5">
-                        {selectedPatient.formulir_wicara?.harapan_terapi || selectedPatient.harapan_terapi_wicara || "-"}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Render Non-Wicara Form Data (Hipoterapi, Terapi Perilaku, Konsultasi, Skrining, dll) */}
-                {shouldShowNonWicaraForm(selectedPatient) && (
-                  <div className="flex flex-col gap-3 text-xs bg-muted/20 p-4 rounded-xl border border-border">
-                    <div className="font-bold text-xs text-primary flex items-center justify-between">
-                      <span>Detail Formulir {selectedPatient.jenis_terapi || "Terapi / Konsultasi"}</span>
-                      {(selectedPatient.formulir_hipoterapi?.program_spesifik || selectedPatient.jenis_terapi) && (
-                        <span className="text-[11px] font-semibold text-muted-foreground bg-background px-2 py-0.5 rounded border border-border">
-                          {selectedPatient.formulir_hipoterapi?.program_spesifik || selectedPatient.jenis_terapi}
-                        </span>
-                      )}
-                    </div>
-
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Keluhan Utama Emosi / Perilaku / Konsultasi</span>
-                      {renderChips(selectedPatient.formulir_hipoterapi?.keluhan_utama || selectedPatient.keluhan_utama)}
-                    </div>
-
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Penjelasan Detail Keluhan</span>
-                      <p className="font-bold text-foreground italic mt-0.5">
-                        {selectedPatient.formulir_hipoterapi?.penjelasan_keluhan || selectedPatient.penjelasan_keluhan || "-"}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Durasi Keluhan</span>
-                        <span className="font-bold text-foreground">
-                          {selectedPatient.formulir_hipoterapi?.sudah_berapa_lama || selectedPatient.sudah_berapa_lama_hipo || "-"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Bahasa Sehari-hari</span>
-                        <span className="font-bold text-foreground">
-                          {selectedPatient.formulir_hipoterapi?.bahasa_sehari_hari || selectedPatient.bahasa_sehari_hari_hipo || "-"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pengurus Utama Anak</span>
-                      {renderChips(selectedPatient.formulir_hipoterapi?.pengurus_utama || selectedPatient.pengurus_utama_hipo)}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Tempat Favorit Anak</span>
-                        {renderChips(selectedPatient.formulir_hipoterapi?.tempat_favorit || selectedPatient.tempat_favorit)}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Kegiatan / Hobi Anak</span>
-                        {renderChips(selectedPatient.formulir_hipoterapi?.hobby || selectedPatient.hobby)}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Penanganan Dokter / Psikolog?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_hipoterapi?.dalam_penanganan_dokter ?? selectedPatient.dalam_penanganan_dokter)}
-                        </span>
-                        {(selectedPatient.formulir_hipoterapi?.nama_dokter || selectedPatient.nama_dokter) && (
-                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_hipoterapi?.nama_dokter || selectedPatient.nama_dokter})</div>
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pernah Terapi / Hipnoterapi Sebelum?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_hipoterapi?.pernah_hipnoterapi ?? selectedPatient.pernah_hipnoterapi)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Masalah Kehamilan / Persalinan?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_hipoterapi?.masalah_kehamilan ?? selectedPatient.masalah_kehamilan_hipo)}
-                        </span>
-                        {(selectedPatient.formulir_hipoterapi?.detail_masalah_kehamilan || selectedPatient.detail_masalah_kehamilan_hipo) && (
-                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_hipoterapi?.detail_masalah_kehamilan || selectedPatient.detail_masalah_kehamilan_hipo})</div>
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Pengalaman Negatif / Trauma?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_hipoterapi?.pernah_trauma ?? selectedPatient.pernah_trauma_hipo)}
-                        </span>
-                        {(selectedPatient.formulir_hipoterapi?.detail_trauma || selectedPatient.detail_trauma_hipo) && (
-                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_hipoterapi?.detail_trauma || selectedPatient.detail_trauma_hipo})</div>
-                        )}
-                      </div>
-                    </div>
-
-                    {selectedPatient.formulir_hipoterapi?.ada_ketakutan_terapi !== undefined && (
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Ada Ketakutan Terhadap Terapi?</span>
-                        <span className="font-bold text-foreground">
-                          {formatBoolean(selectedPatient.formulir_hipoterapi?.ada_ketakutan_terapi ?? selectedPatient.ada_ketakutan_terapi)}
-                        </span>
-                        {(selectedPatient.formulir_hipoterapi?.detail_ketakutan || selectedPatient.detail_ketakutan) && (
-                          <div className="text-[11px] text-muted-foreground">({selectedPatient.formulir_hipoterapi?.detail_ketakutan || selectedPatient.detail_ketakutan})</div>
-                        )}
-                      </div>
-                    )}
-
-                    <div>
-                      <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Harapan Setelah Terapi</span>
-                      <p className="font-bold text-foreground mt-0.5">
-                        {selectedPatient.formulir_hipoterapi?.harapan_terapi || selectedPatient.harapan_terapi_hipo || "-"}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Fallback when no specific form data is present */}
-                {!shouldShowWicaraForm(selectedPatient) && !shouldShowNonWicaraForm(selectedPatient) && (
-                  <div className="text-xs text-muted-foreground italic bg-muted/20 p-4 rounded-xl text-center border border-border">
-                    Belum ada data detail kuisioner khusus yang terisi untuk pendaftaran ini.
-                  </div>
-                )}
-              </div>
-
-              {/* SECTION 4: Persetujuan Layanan */}
-              {(() => {
-                const hasAcceptedTerms =
-                  selectedPatient.persetujuan_syarat_ketentuan === true ||
-                  selectedPatient.persetujuan_syarat_ketentuan === "true" ||
-                  selectedPatient.persetujuan_syarat_ketentuan === 1 ||
-                  selectedPatient.declarationAccepted === true ||
-                  selectedPatient.declarationAccepted === "true" ||
-                  selectedPatient.declarationAccepted === 1;
-                const dokumentasiLabel: Record<string, string> = {
-                  setuju_tanpa_pengecualian: "Setuju tanpa pengecualian",
-                  setuju_dengan_sensor: "Setuju dengan sensor",
-                  tidak_setuju: "Tidak setuju",
-                };
-                const dokumentasiText = selectedPatient.persetujuan_dokumentasi
-                  ? (dokumentasiLabel[selectedPatient.persetujuan_dokumentasi] || selectedPatient.persetujuan_dokumentasi)
-                  : null;
-                if (!hasAcceptedTerms && !dokumentasiText && !selectedPatient.penandatangan_kota && !selectedPatient.penandatangan_tanggal) return null;
-                return (
-                  <div className="flex flex-col gap-3">
-                    <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 border-b border-border pb-1">
-                      <FileText size={14} /> 4. Persetujuan Layanan (Syarat & Ketentuan)
-                    </h4>
-                    <div className="flex flex-col gap-3 text-xs bg-muted/20 p-4 rounded-xl border border-border">
-                      <div>
-                        <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Persetujuan Syarat & Ketentuan</span>
-                        {hasAcceptedTerms ? (
-                          <span className="inline-flex items-center gap-1 mt-1 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200 px-2 py-0.5 rounded text-[11px] font-bold">
-                            ✓ Telah membaca dan menyetujui Syarat & Ketentuan Persetujuan Layanan
-                          </span>
-                        ) : (
-                          <span className="font-bold text-foreground">-</span>
-                        )}
-                      </div>
-                      {dokumentasiText && (
-                        <div>
-                          <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Persetujuan Dokumentasi</span>
-                          <span className="font-bold text-foreground">{dokumentasiText}</span>
-                        </div>
-                      )}
-                      {(selectedPatient.penandatangan_kota || selectedPatient.penandatangan_tanggal) && (
-                        <div className="grid grid-cols-2 gap-3">
-                          {selectedPatient.penandatangan_kota && (
-                            <div>
-                              <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Kota Penandatangan</span>
-                              <span className="font-bold text-foreground">{selectedPatient.penandatangan_kota}</span>
-                            </div>
-                          )}
-                          {selectedPatient.penandatangan_tanggal && (
-                            <div>
-                              <span className="text-muted-foreground font-semibold block text-[10px] uppercase">Tanggal Penandatangan</span>
-                              <span className="font-bold text-foreground">{selectedPatient.penandatangan_tanggal}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* SECTION 5: Catatan Internal Admin */}
-              <div className="flex flex-col gap-2 border-t border-border pt-3">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Catatan Terapis / Admin Internal</label>
-                <textarea
-                  placeholder="Masukkan catatan evaluasi atau instruksi tambahan..."
-                  value={selectedPatient.catatan_internal || ""}
-                  onChange={(e) => handleUpdateNotes(selectedPatient.id, e.target.value)}
-                  rows={3}
-                  className="bg-background border border-input rounded-md p-3 text-xs text-foreground focus:outline-none focus:border-primary resize-none w-full"
-                />
-              </div>
-            </div>
-          )}
-
+          <SimplePagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredPatients.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </Main>
 
-      {/* ================= Progress & Milestone Modal ================= */}
-      {progressModalOpen && selectedPatient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 flex flex-col gap-6 relative">
-            <div className="flex justify-between items-start border-b border-border pb-4">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary">Progress Tracking System</span>
-                <h3 className="text-xl font-bold text-foreground mt-0.5">
-                  Record Sesi & Milestone: {selectedPatient.nama_lengkap}
-                </h3>
-                <p className="text-xs text-muted-foreground font-medium">
-                  Input evaluasi perkembangan per sesi agar orang tua dapat memantau grafik milestone anak di Patient Portal.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setProgressModalOpen(false)}
-                className="p-1 rounded-md hover:bg-muted text-muted-foreground"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Existing Recorded Sessions */}
-            <div className="flex flex-col gap-3">
-              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                📋 Riwayat Sesi Terdaftar ({patientLogs.length} Sesi Recorded)
-              </h4>
-              {loadingLogs ? (
-                <div className="text-xs text-muted-foreground italic p-3">Memuat riwayat sesi...</div>
-              ) : patientLogs.length === 0 ? (
-                <div className="text-xs text-muted-foreground italic bg-muted/40 p-4 rounded-xl text-center">
-                  Belum ada log sesi tercatat. Silakan input sesi pertama di bawah ini.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
-                  {patientLogs.map((log: any, idx: number) => (
-                    <div key={log.id || idx} className="bg-muted/40 border border-border rounded-xl p-3.5 flex flex-col gap-1.5 text-xs">
-                      <div className="flex justify-between items-center">
-                        <span className="font-extrabold text-primary">Sesi #{log.session_number} dari {log.total_sessions}</span>
-                        <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">
-                          Score: {log.progress_score}%
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground font-semibold">Tanggal: {log.session_date || '—'}</span>
-                      <p className="font-bold text-foreground line-clamp-1">🎯 {log.fokus_latihan || 'Latihan Stimulasi'}</p>
-                      {log.catatan_terapis && <p className="text-muted-foreground italic text-[11px] line-clamp-2">💬 "{log.catatan_terapis}"</p>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Input Form for New Session */}
-            <div className="border-t border-border pt-4 flex flex-col gap-4 bg-muted/20 p-5 rounded-xl border">
-              <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
-                ✏️ Form Input Progress Sesi Baru
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Sesi Ke-</label>
-                  <input
-                    type="number"
-                    value={logForm.session_number}
-                    onChange={(e) => setLogForm((f) => ({ ...f, session_number: Number(e.target.value) }))}
-                    className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Total Sesi Paket</label>
-                  <input
-                    type="number"
-                    value={logForm.total_sessions}
-                    onChange={(e) => setLogForm((f) => ({ ...f, total_sessions: Number(e.target.value) }))}
-                    className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Tanggal Sesi</label>
-                  <input
-                    type="date"
-                    value={logForm.session_date}
-                    onChange={(e) => setLogForm((f) => ({ ...f, session_date: e.target.value }))}
-                    className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-muted-foreground uppercase">Fokus Latihan / Pembelajaran Sesi Ini</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Stimulasi Kontak Mata & Artikulasi Kata Huruf R"
-                  value={logForm.fokus_latihan}
-                  onChange={(e) => setLogForm((f) => ({ ...f, fokus_latihan: e.target.value }))}
-                  className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs font-semibold mt-1"
-                />
-              </div>
-
-              {/* Overall Progress Score */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Skor Evaluasi Sesi Overall ({logForm.progress_score}%)</label>
-                  <span className="text-xs font-black text-primary">{logForm.progress_score}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={logForm.progress_score}
-                  onChange={(e) => setLogForm((f) => ({ ...f, progress_score: Number(e.target.value) }))}
-                  className="w-full accent-primary cursor-pointer"
-                />
-              </div>
-
-              {/* Aspect Scores Breakdown */}
-              <div className="flex flex-col gap-2 bg-background p-3 rounded-lg border border-border">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Breakdown Skor Aspek Tumbuh Kembang (0-100%):</span>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <div className="flex justify-between">
-                      <span>👁️ Atensi & Fokus:</span>
-                      <span className="font-bold">{logForm.aspect_scores.atensi_fokus}%</span>
-                    </div>
-                    <input
-                      type="range" min={0} max={100}
-                      value={logForm.aspect_scores.atensi_fokus}
-                      onChange={(e) => setLogForm((f) => ({ ...f, aspect_scores: { ...f.aspect_scores, atensi_fokus: Number(e.target.value) } }))}
-                      className="w-full accent-blue-600"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between">
-                      <span>🗣️ Artikulasi & Wicara:</span>
-                      <span className="font-bold">{logForm.aspect_scores.artikulasi_wicara}%</span>
-                    </div>
-                    <input
-                      type="range" min={0} max={100}
-                      value={logForm.aspect_scores.artikulasi_wicara}
-                      onChange={(e) => setLogForm((f) => ({ ...f, aspect_scores: { ...f.aspect_scores, artikulasi_wicara: Number(e.target.value) } }))}
-                      className="w-full accent-emerald-600"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between">
-                      <span>💖 Regulasi Emosi:</span>
-                      <span className="font-bold">{logForm.aspect_scores.regulasi_emosi}%</span>
-                    </div>
-                    <input
-                      type="range" min={0} max={100}
-                      value={logForm.aspect_scores.regulasi_emosi}
-                      onChange={(e) => setLogForm((f) => ({ ...f, aspect_scores: { ...f.aspect_scores, regulasi_emosi: Number(e.target.value) } }))}
-                      className="w-full accent-purple-600"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between">
-                      <span>📝 Kepatuhan Instruksi:</span>
-                      <span className="font-bold">{logForm.aspect_scores.kepatuhan_instruksi}%</span>
-                    </div>
-                    <input
-                      type="range" min={0} max={100}
-                      value={logForm.aspect_scores.kepatuhan_instruksi}
-                      onChange={(e) => setLogForm((f) => ({ ...f, aspect_scores: { ...f.aspect_scores, kepatuhan_instruksi: Number(e.target.value) } }))}
-                      className="w-full accent-amber-600"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Text Notes */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Catatan Evaluasi Terapis</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Evaluasi lengkap hasil stimulasi terapis selama sesi berlangsung..."
-                    value={logForm.catatan_terapis}
-                    onChange={(e) => setLogForm((f) => ({ ...f, catatan_terapis: e.target.value }))}
-                    className="w-full bg-background border border-input rounded-md p-2.5 text-xs focus:outline-none focus:border-primary resize-none mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">Rekomendasi Latihan di Rumah (PR Ortu)</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Instruksi latihan atau kegiatan yang perlu dilakukan orang tua di rumah..."
-                    value={logForm.rekomendasi_ortu}
-                    onChange={(e) => setLogForm((f) => ({ ...f, rekomendasi_ortu: e.target.value }))}
-                    className="w-full bg-background border border-input rounded-md p-2.5 text-xs focus:outline-none focus:border-primary resize-none mt-1"
-                  />
-                </div>
-              </div>
-
-              {/* Status Milestone */}
-              <div>
-                <label className="text-[10px] font-bold text-muted-foreground uppercase">Status Pencapaian Milestone</label>
-                <div className="flex gap-2 mt-1">
-                  {[
-                    { key: "sesuai_target", label: "✅ Sesuai Target" },
-                    { key: "melampaui_target", label: "🌟 Melampaui Target" },
-                    { key: "perlu_pembiasaan", label: "🔄 Perlu Pembiasaan" },
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => setLogForm((f) => ({ ...f, status_pencapaian: item.key }))}
-                      className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
-                        logForm.status_pencapaian === item.key
-                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                          : "bg-background border-input text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action */}
-              <button
-                type="button"
-                onClick={handleSaveLog}
-                disabled={savingLog}
-                className="mt-2 bg-primary hover:brightness-110 text-primary-foreground font-bold py-2.5 px-4 rounded-xl text-xs shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {savingLog ? "Memproses Simpan..." : "💾 Simpan Progress Sesi Terapi"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Patient Multi-Tab Detail Modal */}
+      <PatientDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        patient={selectedPatient}
+        therapists={therapists}
+        patientLogs={patientLogs}
+        loadingLogs={loadingLogs}
+        onUpdateStatus={handleUpdateStatus}
+        onAssignTherapist={handleAssignTherapist}
+        onUpdateNotes={handleUpdateNotes}
+        onSaveLog={handleSaveLogForModal}
+        onOpenPdf={handleOpenPdfFromModal}
+      />
 
       {/* Patient PDF Builder Modal */}
       <PatientPdfBuilder
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
         patient={pdfPatient}
+        selectedProgram={selectedPdfProgram}
       />
     </div>
   );

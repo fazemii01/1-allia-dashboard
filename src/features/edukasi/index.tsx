@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, BookOpen, Globe, Archive } from 'lucide-react'
 import EdukasiEditor from './editor'
+import { SimplePagination } from '@/components/simple-pagination'
 
 interface EdukasiItem {
   id: string | number
@@ -51,6 +52,8 @@ export default function EdukasiPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [activeTab, setActiveTab] = useState<'all' | EdukasiItem['category']>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const [editorOpen, setEditorOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<EdukasiItem | null>(null)
@@ -170,7 +173,9 @@ export default function EdukasiPage() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((item) => (
+                  filtered
+                    .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                    .map((item) => (
                     <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4">
                         <div className="font-semibold text-foreground">{item.title}</div>
@@ -220,6 +225,13 @@ export default function EdukasiPage() {
               </tbody>
             </table>
           </div>
+          <SimplePagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filtered.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </Main>
 

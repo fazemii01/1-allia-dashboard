@@ -6,6 +6,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { apiFetch } from '@/lib/api'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Package } from 'lucide-react'
+import { SimplePagination } from '@/components/simple-pagination'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,11 @@ export default function LayananPage() {
   const [layForm, setLayForm] = useState(emptyLayananForm)
   const [laySaving, setLaySaving] = useState(false)
   const [layDeleteTarget, setLayDeleteTarget] = useState<Layanan | null>(null)
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [catCurrentPage, setCatCurrentPage] = useState(1)
+  const [catPageSize, setCatPageSize] = useState(10)
 
   // Promo management bulk state
   const [selectedLayananIds, setSelectedLayananIds] = useState<Array<string | number>>([])
@@ -380,7 +386,9 @@ export default function LayananPage() {
                     <tr key={i}>{Array.from({ length: 5 }).map((_, j) => <td key={j} className="p-4"><div className="h-4 bg-muted animate-pulse rounded w-3/4" /></td>)}</tr>
                   )) : categories.length === 0 ? (
                     <tr><td colSpan={5} className="p-10 text-center text-muted-foreground font-semibold">Belum ada data</td></tr>
-                  ) : categories.map((c) => (
+                  ) : categories
+                      .slice((catCurrentPage - 1) * catPageSize, catCurrentPage * catPageSize)
+                      .map((c) => (
                     <tr key={c.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4 font-semibold text-foreground">{c.name}</td>
                       <td className="p-4 font-mono text-xs text-muted-foreground">{c.slug}</td>
@@ -396,6 +404,13 @@ export default function LayananPage() {
                   ))}
                 </tbody>
               </table>
+              <SimplePagination
+                currentPage={catCurrentPage}
+                pageSize={catPageSize}
+                totalItems={categories.length}
+                onPageChange={setCatCurrentPage}
+                onPageSizeChange={setCatPageSize}
+              />
             </div>
           </>
         )}
@@ -422,7 +437,9 @@ export default function LayananPage() {
                     <tr><td colSpan={5} className="p-10 text-center text-muted-foreground font-semibold">
                       <div className="flex flex-col items-center gap-2"><Package size={32} className="opacity-30" />Belum ada data layanan</div>
                     </td></tr>
-                  ) : layanan.map((l) => (
+                  ) : layanan
+                      .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                      .map((l) => (
                     <tr key={l.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4 font-semibold text-foreground">
                         <div className="flex items-center gap-2">
@@ -460,6 +477,13 @@ export default function LayananPage() {
                   ))}
                 </tbody>
               </table>
+              <SimplePagination
+                currentPage={currentPage}
+                pageSize={pageSize}
+                totalItems={layanan.length}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+              />
             </div>
           </>
         )}

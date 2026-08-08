@@ -6,6 +6,7 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { apiFetch } from '@/lib/api'
 import { toast } from 'sonner'
 import { Pencil, Trash2, Plus, UserCog } from 'lucide-react'
+import { SimplePagination } from '@/components/simple-pagination'
 
 interface Therapist {
   id: string | number
@@ -39,6 +40,8 @@ export default function TherapistsPage() {
   const [therapists, setTherapists] = useState<Therapist[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -223,7 +226,9 @@ export default function TherapistsPage() {
                     </td>
                   </tr>
                 ) : (
-                  therapists.map((t) => (
+                  therapists
+                    .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                    .map((t) => (
                     <tr key={t.id} className="hover:bg-muted/30 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
@@ -274,6 +279,13 @@ export default function TherapistsPage() {
               </tbody>
             </table>
           </div>
+          <SimplePagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={therapists.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </Main>
 

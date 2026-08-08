@@ -23,6 +23,7 @@ import {
   Save,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SimplePagination } from "@/components/simple-pagination";
 
 interface WATemplate {
   id: string;
@@ -127,6 +128,11 @@ export function WhatsAppManager() {
     is_active: true,
   });
   const [savingRule, setSavingRule] = useState(false);
+
+  const [logCurrentPage, setLogCurrentPage] = useState(1);
+  const [logPageSize, setLogPageSize] = useState(10);
+  const [autoCurrentPage, setAutoCurrentPage] = useState(1);
+  const [autoPageSize, setAutoPageSize] = useState(10);
 
   const fetchLogs = async () => {
     try {
@@ -637,7 +643,9 @@ export function WhatsAppManager() {
                         </td>
                       </tr>
                     ) : (
-                      logs.map((log) => (
+                      logs
+                        .slice((logCurrentPage - 1) * logPageSize, logCurrentPage * logPageSize)
+                        .map((log) => (
                         <tr key={log.id} className="hover:bg-muted/30 transition-colors">
                           <td className="p-4 font-semibold text-foreground">{log.recipient}</td>
                           <td className="p-4 text-foreground">{log.patient_name || "-"}</td>
@@ -672,6 +680,13 @@ export function WhatsAppManager() {
                   </tbody>
                 </table>
               </div>
+              <SimplePagination
+                currentPage={logCurrentPage}
+                pageSize={logPageSize}
+                totalItems={logs.length}
+                onPageChange={setLogCurrentPage}
+                onPageSizeChange={setLogPageSize}
+              />
             </div>
           )}
 
@@ -789,7 +804,9 @@ export function WhatsAppManager() {
                           </td>
                         </tr>
                       ) : (
-                        autoReplies.map((rule) => (
+                        autoReplies
+                          .slice((autoCurrentPage - 1) * autoPageSize, autoCurrentPage * autoPageSize)
+                          .map((rule) => (
                           <tr key={rule.id} className="hover:bg-muted/30 transition-colors">
                             <td className="p-4 font-bold text-foreground flex items-center gap-2">
                               <Bot size={16} className="text-primary" />
@@ -844,6 +861,13 @@ export function WhatsAppManager() {
                     </tbody>
                   </table>
                 </div>
+                <SimplePagination
+                  currentPage={autoCurrentPage}
+                  pageSize={autoPageSize}
+                  totalItems={autoReplies.length}
+                  onPageChange={setAutoCurrentPage}
+                  onPageSizeChange={setAutoPageSize}
+                />
               </div>
             </div>
           )}

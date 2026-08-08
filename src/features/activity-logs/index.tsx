@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
+import { SimplePagination } from '@/components/simple-pagination'
 
 interface ActivityLog {
   id: number
@@ -48,6 +49,8 @@ export default function ActivityLogsPage() {
   const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState('ALL')
   const [modelFilter, setModelFilter] = useState('ALL')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const fetchLogs = async () => {
     try {
@@ -216,7 +219,9 @@ export default function ActivityLogsPage() {
               </TableHeader>
               <TableBody>
                 {filteredLogs.length > 0 ? (
-                  filteredLogs.map((log) => (
+                  filteredLogs
+                    .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                    .map((log) => (
                     <TableRow key={log.id} className='hover:bg-muted/50'>
                       <TableCell className='font-medium'>
                         <div>
@@ -258,6 +263,13 @@ export default function ActivityLogsPage() {
                 )}
               </TableBody>
             </Table>
+            <SimplePagination
+              currentPage={currentPage}
+              pageSize={pageSize}
+              totalItems={filteredLogs.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
           </div>
         )}
       </Main>
