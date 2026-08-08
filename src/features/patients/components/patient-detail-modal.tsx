@@ -124,6 +124,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
 
   // New progress log form state
   const [savingLog, setSavingLog] = useState<boolean>(false);
+  const [editingLogId, setEditingLogId] = useState<number | null>(null);
   const [logForm, setLogForm] = useState({
     program_name: "",
     session_number: 1,
@@ -219,8 +220,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
     }
   };
 
-  // Editing state
-  const [editingLogId, setEditingLogId] = useState<number | null>(null);
+  // Editing handlers
 
   const handleStartEditLog = (log: any) => {
     setEditingLogId(log.id);
