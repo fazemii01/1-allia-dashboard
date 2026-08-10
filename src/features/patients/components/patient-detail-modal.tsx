@@ -384,50 +384,55 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
             </Button>
           </div>
         </DialogHeader>
-
+        
         {/* Modal Tabs Navigation Bar */}
-        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 flex gap-2 sm:gap-6 overflow-x-auto whitespace-nowrap scrollbar-none">
-          <button
-            onClick={() => setActiveTab("bookings")}
-            className={`py-3 px-2 sm:px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 ${
-              activeTab === "bookings"
-                ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400"
-            }`}
-          >
-            <FileText className="h-4 w-4" />
-            <span>Riwayat Booking & Formulir</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-              {bookingList.length}
-            </span>
-          </button>
+        <div className="shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-2 sm:px-6 sm:py-0 overflow-x-auto whitespace-nowrap z-10">
+          <div className="flex sm:gap-6 gap-1 bg-slate-100 dark:bg-slate-800/80 sm:bg-transparent sm:dark:bg-transparent p-1 sm:p-0 rounded-xl sm:rounded-none">
+            <button
+              onClick={() => setActiveTab("bookings")}
+              className={`flex-1 sm:flex-initial py-2 sm:py-3.5 px-2.5 sm:px-2 text-xs font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === "bookings"
+                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm sm:shadow-none sm:border-blue-600"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 sm:border-transparent"
+              }`}
+            >
+              <FileText className="h-4 w-4 shrink-0" />
+              <span className="sm:hidden">Booking</span>
+              <span className="hidden sm:inline">Riwayat Booking & Formulir</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                {bookingList.length}
+              </span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab("progress")}
-            className={`py-3 px-2 sm:px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 ${
-              activeTab === "progress"
-                ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400"
-            }`}
-          >
-            <TrendingUp className="h-4 w-4" />
-            <span>Progress & Sesi Terapi</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-              {patientLogs.length}
-            </span>
-          </button>
+            <button
+              onClick={() => setActiveTab("progress")}
+              className={`flex-1 sm:flex-initial py-2 sm:py-3.5 px-2.5 sm:px-2 text-xs font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === "progress"
+                  ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm sm:shadow-none sm:border-purple-600"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 sm:border-transparent"
+              }`}
+            >
+              <TrendingUp className="h-4 w-4 shrink-0" />
+              <span className="sm:hidden">Progress</span>
+              <span className="hidden sm:inline">Progress & Sesi Terapi</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                {patientLogs.length}
+              </span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`py-3 px-2 sm:px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 ${
-              activeTab === "profile"
-                ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400"
-            }`}
-          >
-            <User className="h-4 w-4" />
-            <span>Profil Pasien & Terapis</span>
-          </button>
+            <button
+              onClick={() => setActiveTab("profile")}
+              className={`flex-1 sm:flex-initial py-2 sm:py-3.5 px-2.5 sm:px-2 text-xs font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                activeTab === "profile"
+                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm sm:shadow-none sm:border-blue-600"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 sm:border-transparent"
+              }`}
+            >
+              <User className="h-4 w-4 shrink-0" />
+              <span className="sm:hidden">Profil</span>
+              <span className="hidden sm:inline">Profil Pasien & Terapis</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab Body Content */}
