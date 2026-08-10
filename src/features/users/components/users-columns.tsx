@@ -54,12 +54,13 @@ export const usersColumns: ColumnDef<User>[] = [
   },
   {
     id: 'fullName',
+    accessorFn: (row) => `${row.firstName} ${row.lastName}`.trim(),
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title='Name' />
     ),
     cell: ({ row }) => {
       const { firstName, lastName } = row.original
-      const fullName = `${firstName} ${lastName}`
+      const fullName = `${firstName} ${lastName}`.trim()
       return <LongText className='max-w-36'>{fullName}</LongText>
     },
     meta: { className: 'w-36' },

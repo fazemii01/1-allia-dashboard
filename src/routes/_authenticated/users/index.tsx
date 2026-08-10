@@ -22,8 +22,9 @@ const usersSearchSchema = z.object({
     .array(z.enum(roles.map((r) => r.value as (typeof roles)[number]['value'])))
     .optional()
     .catch([]),
-  // Per-column text filter (example for username)
+  // Per-column text filter
   username: z.string().optional().catch(''),
+  fullName: z.string().optional().catch(''),
 })
 
 export const Route = createFileRoute('/_authenticated/users/')({

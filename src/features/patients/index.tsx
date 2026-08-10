@@ -261,9 +261,13 @@ export function Patients() {
     }
     if (typeof id === "number" || (!String(id).startsWith("demo") && !String(id).startsWith("local"))) {
       try {
-        await api.patch(`/patients/${id}`, { status: newStatus });
-      } catch (err) {
-        console.error("Failed to update status on server", err);
+        await api.patch(`/admin/patients/${id}`, { status: newStatus });
+      } catch {
+        try {
+          await api.patch(`/patients/${id}`, { status: newStatus });
+        } catch (err) {
+          console.error("Failed to update status on server", err);
+        }
       }
     }
   };
@@ -272,30 +276,58 @@ export function Patients() {
     const therapistId = therapistIdStr ? Number(therapistIdStr) : null;
     const selectedObj = therapists.find((t) => t.id === therapistId);
 
+    const currentPatient = patients.find((p) => p.id === id);
+    const shouldUpdateStatusToAktif = therapistId !== null && currentPatient?.status === "baru";
+
     setPatients((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, therapist_id: therapistId, therapist: selectedObj || therapistIdStr } : p))
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              therapist_id: therapistId,
+              therapist: selectedObj || therapistIdStr,
+              ...(shouldUpdateStatusToAktif ? { status: "aktif" as const } : {}),
+            }
+          : p
+      )
     );
 
     if (selectedPatient) {
       setSelectedPatient((prev) => {
         if (!prev) return null;
         const updatedBookings = (prev.bookings || [prev]).map((b) =>
-          b.id === id ? { ...b, therapist_id: therapistId, therapist: selectedObj || therapistIdStr } : b
+          b.id === id
+            ? {
+                ...b,
+                therapist_id: therapistId,
+                therapist: selectedObj || therapistIdStr,
+                ...(shouldUpdateStatusToAktif ? { status: "aktif" as const } : {}),
+              }
+            : b
         );
         return {
           ...prev,
           therapist_id: prev.id === id ? therapistId : prev.therapist_id,
           therapist: prev.id === id ? (selectedObj || therapistIdStr) : prev.therapist,
+          status: prev.id === id && shouldUpdateStatusToAktif ? "aktif" : prev.status,
           bookings: updatedBookings,
         };
       });
     }
 
     if (typeof id === "number" || (!String(id).startsWith("demo") && !String(id).startsWith("local"))) {
+      const payload: any = { therapist_id: therapistId };
+      if (shouldUpdateStatusToAktif) {
+        payload.status = "aktif";
+      }
       try {
-        await api.patch(`/patients/${id}`, { therapist_id: therapistId });
-      } catch (err) {
-        console.error("Failed to assign therapist on server", err);
+        await api.patch(`/admin/patients/${id}`, payload);
+      } catch {
+        try {
+          await api.patch(`/patients/${id}`, payload);
+        } catch (err) {
+          console.error("Failed to assign therapist on server", err);
+        }
       }
     }
   };
@@ -319,9 +351,13 @@ export function Patients() {
     }
     if (typeof id === "number" || (!String(id).startsWith("demo") && !String(id).startsWith("local"))) {
       try {
-        await api.patch(`/patients/${id}`, { catatan_internal });
-      } catch (err) {
-        console.error("Failed to update notes on server", err);
+        await api.patch(`/admin/patients/${id}`, { catatan_internal });
+      } catch {
+        try {
+          await api.patch(`/patients/${id}`, { catatan_internal });
+        } catch (err) {
+          console.error("Failed to update notes on server", err);
+        }
       }
     }
   };
