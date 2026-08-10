@@ -350,31 +350,31 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl md:max-w-5xl lg:max-w-5xl w-[94vw] max-h-[90vh] flex flex-col p-0 gap-0 bg-slate-50 dark:bg-slate-900 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl">
+      <DialogContent className="sm:max-w-4xl md:max-w-5xl lg:max-w-5xl w-[96vw] sm:w-[94vw] max-h-[92vh] flex flex-col p-0 gap-0 bg-slate-50 dark:bg-slate-900 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl">
         {/* Modal Header */}
-        <DialogHeader className="p-6 pr-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="p-3 bg-blue-600 text-white rounded-xl shadow-md shrink-0">
-              <User className="h-6 w-6" />
+        <DialogHeader className="p-4 sm:p-6 pr-10 sm:pr-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3.5 min-w-0 w-full sm:w-auto">
+            <div className="p-2.5 sm:p-3 bg-blue-600 text-white rounded-xl shadow-md shrink-0">
+              <User className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <DialogTitle className="text-xl font-extrabold text-slate-900 dark:text-slate-50 truncate">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <DialogTitle className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-slate-50 break-words leading-tight">
                   {patient.nama_lengkap}
                 </DialogTitle>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide shrink-0 ${getStatusBadge(patient.status)}`}>
                   {patient.status}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2.5 flex-wrap">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2.5">
                 <span>Usia: <strong>{patient.usia ? `${patient.usia} Thn` : "-"}</strong></span>
-                <span>•</span>
+                <span className="hidden sm:inline">•</span>
                 <span>Ortu: <strong>{patient.nama_ibu || patient.nama_ayah || "-"}</strong> ({patient.no_telepon || "-"})</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             <Button
               onClick={() => onOpenPdf(patient, activeBooking?.jenis_terapi)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-sm px-4 py-2"
@@ -386,10 +386,10 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
         </DialogHeader>
 
         {/* Modal Tabs Navigation Bar */}
-        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex gap-6 overflow-x-auto whitespace-nowrap">
+        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 flex gap-2 sm:gap-6 overflow-x-auto whitespace-nowrap scrollbar-none">
           <button
             onClick={() => setActiveTab("bookings")}
-            className={`py-3.5 px-2 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+            className={`py-3 px-2 sm:px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 ${
               activeTab === "bookings"
                 ? "border-blue-600 text-blue-600 dark:text-blue-400"
                 : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400"
@@ -398,13 +398,13 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
             <FileText className="h-4 w-4" />
             <span>Riwayat Booking & Formulir</span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-              {bookingList.length} Program
+              {bookingList.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab("progress")}
-            className={`py-3.5 px-2 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+            className={`py-3 px-2 sm:px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 ${
               activeTab === "progress"
                 ? "border-blue-600 text-blue-600 dark:text-blue-400"
                 : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400"
@@ -413,13 +413,13 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
             <TrendingUp className="h-4 w-4" />
             <span>Progress & Sesi Terapi</span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-              {patientLogs.length} Sesi
+              {patientLogs.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab("profile")}
-            className={`py-3.5 px-2 text-xs font-bold transition-all border-b-2 flex items-center gap-2 cursor-pointer shrink-0 ${
+            className={`py-3 px-2 sm:px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 ${
               activeTab === "profile"
                 ? "border-blue-600 text-blue-600 dark:text-blue-400"
                 : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400"
@@ -431,34 +431,34 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
         </div>
 
         {/* Tab Body Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
           {/* TAB 1: RIWAYAT BOOKING & FORMULIR PROGRAM */}
           {activeTab === "bookings" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Program Selector Bar */}
-              <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+              <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 sm:p-4 shadow-sm space-y-2.5">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4 text-blue-600" />
+                    <Sparkles className="h-4 w-4 text-blue-600 shrink-0" />
                     Pilih Program Pendaftaran Pasien ({bookingList.length} Terdaftar):
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
                   {bookingList.map((b, idx) => {
                     const isSelected = idx === selectedBookingIndex;
                     return (
                       <button
                         key={b.id || idx}
                         onClick={() => setSelectedBookingIndex(idx)}
-                        className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        className={`flex items-center justify-between sm:justify-start gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer w-full sm:w-auto ${
                           isSelected
                             ? "bg-blue-600 text-white border-blue-600 shadow-md"
                             : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700"
                         }`}
                       >
-                        <span>{getProgramTitle(b.jenis_terapi)}</span>
+                        <span className="truncate">{getProgramTitle(b.jenis_terapi)}</span>
                         {b.created_at && (
-                          <span className={`text-[10px] px-2 py-0.5 rounded-md ${isSelected ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-md shrink-0 ${isSelected ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
                             {new Date(b.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
                           </span>
                         )}
@@ -1312,16 +1312,16 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <DialogFooter className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
-          <Button variant="outline" onClick={onClose} className="font-bold text-xs">
+        <DialogFooter className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col-reverse sm:flex-row sm:justify-between items-stretch sm:items-center gap-2 sm:gap-3">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto font-bold text-xs py-2.5 sm:py-2">
             Tutup
           </Button>
           <Button
             onClick={() => onOpenPdf(patient, activeBooking?.jenis_terapi)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-sm"
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-sm py-2.5 sm:py-2"
           >
             <Download className="h-4 w-4" />
-            Cetak PDF Formulir
+            Cetak PDF Formulir ({bookingList.length > 1 ? `Booking #${selectedBookingIndex + 1}` : "Rekap"})
           </Button>
         </DialogFooter>
       </DialogContent>

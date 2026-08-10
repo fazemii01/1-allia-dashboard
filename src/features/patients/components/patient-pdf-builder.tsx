@@ -315,30 +315,23 @@ export const PatientPdfBuilder: React.FC<PatientPdfBuilderProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-900 border-slate-800">
+      <DialogContent className="w-[96vw] sm:w-full max-w-4xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-900 border-slate-800 rounded-2xl">
         {/* Modal Action Header */}
-        <div className="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center z-10">
-          <div className="flex items-center gap-2">
-            <Printer className="h-5 w-5 text-emerald-400" />
-            <h3 className="text-sm font-bold text-slate-100">
-              Pratinjau PDF Formulir - {patient.nama_lengkap} ({targetBooking.jenis_terapi || patient.jenis_terapi})
-            </h3>
+        <div className="p-3 sm:p-4 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2.5 z-10">
+          <div className="flex items-center gap-2 text-white">
+            <Printer className="h-5 w-5 text-blue-400 shrink-0" />
+            <span className="font-bold text-sm truncate">Pratinjau Cetak Formulir Rekap Pasien</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between sm:justify-end gap-2">
             <Button
               onClick={handlePrint}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-md"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 shadow-md flex-1 sm:flex-initial py-2"
             >
               <Download className="h-4 w-4" />
-              Cetak / Simpan PDF
+              Cetak / Unduh PDF
             </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8 text-slate-400 hover:text-white border-slate-700"
-            >
-              <X className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-400 hover:text-white shrink-0">
+              <X className="h-5 w-5" />
             </Button>
           </div>
         </div>

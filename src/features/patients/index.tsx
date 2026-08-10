@@ -447,14 +447,14 @@ export function Patients() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header fixed>
-        <div className="flex items-center gap-2 border border-input bg-background rounded-md px-3 py-1.5 w-64 max-w-sm text-sm">
-          <Search size={16} className="text-muted-foreground" />
+        <div className="flex items-center gap-2 border border-input bg-background rounded-md px-2.5 sm:px-3 py-1.5 w-full max-w-[180px] sm:w-64 sm:max-w-sm text-sm">
+          <Search size={16} className="text-muted-foreground shrink-0" />
           <input
             type="text"
-            placeholder="Cari pasien / orang tua..."
+            placeholder="Cari pasien..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-none outline-none w-full"
+            className="bg-transparent border-none outline-none w-full text-xs sm:text-sm"
           />
         </div>
         <ThemeSwitch />
