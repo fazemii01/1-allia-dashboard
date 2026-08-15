@@ -21,9 +21,28 @@ import {
   Eye,
   Sparkles,
   Save,
+  AlertTriangle,
+  Search,
+  RotateCcw,
+  Copy,
+  ExternalLink,
+  Info,
+  Filter,
+  Phone,
+  User,
+  MessageSquare,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SimplePagination } from "@/components/simple-pagination";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface WATemplate {
   id: string;
@@ -41,6 +60,7 @@ interface WALog {
   type: string;
   body: string;
   status: "sent" | "failed" | "received" | "pending" | string;
+  error_message?: string;
   created_at?: string;
 }
 
@@ -129,6 +149,12 @@ export function WhatsAppManager() {
   });
   const [savingRule, setSavingRule] = useState(false);
 
+  // Log Pengiriman state (search, filter, detail modal, retry)
+  const [logSearch, setLogSearch] = useState("");
+  const [logStatusFilter, setLogStatusFilter] = useState<"all" | "failed" | "sent" | "received">("all");
+  const [selectedLog, setSelectedLog] = useState<WALog | null>(null);
+  const [retryingLogId, setRetryingLogId] = useState<string | number | null>(null);
+
   const [logCurrentPage, setLogCurrentPage] = useState(1);
   const [logPageSize, setLogPageSize] = useState(10);
   const [autoCurrentPage, setAutoCurrentPage] = useState(1);
@@ -142,6 +168,100 @@ export function WhatsAppManager() {
       console.warn("Failed to load WA logs:", err.message);
     }
   };
+
+  const handleRetryLog = async (logId: string | number) => {
+    setRetryingLogId(logId);
+    try {
+      const res = await apiFetch<{ log: WALog; sent: boolean; error?: string }>(`/admin/whatsapp/logs/${logId}/retry`, {
+        method: "POST",
+      });
+      if (res.sent) {
+        toast.success("Pesan WhatsApp berhasil dikirim ulang!");
+      } else {
+        toast.error(res.error || "Pesan gagal terkirim saat dicoba ulang.");
+      }
+      await fetchLogs();
+      if (selectedLog && String(selectedLog.id) === String(logId)) {
+        setSelectedLog(res.log);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal mencoba mengirim ulang pesan.");
+    } finally {
+      setRetryingLogId(null);
+    }
+  };
+
+  const handleDeleteLog = async (logId: string | number) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus catatan log ini?")) return;
+    try {
+      await apiFetch(`/admin/whatsapp/logs/${logId}`, { method: "DELETE" });
+      toast.success("Catatan log berhasil dihapus.");
+      setLogs((prev) => prev.filter((l) => String(l.id) !== String(logId)));
+      if (selectedLog && String(selectedLog.id) === String(logId)) {
+        setSelectedLog(null);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus log");
+    }
+  };
+
+  const getDiagnosticAdvice = (errorMsg?: string) => {
+    if (!errorMsg) return null;
+    const lower = errorMsg.toLowerCase();
+    if (lower.includes("wasender_api_key") || lower.includes("api_key") || lower.includes("unauthorized") || lower.includes("401")) {
+      return {
+        title: "Konfigurasi API Key Bermasalah",
+        desc: "Kunci WASENDER_API_KEY belum terpasang atau salah pada file environment backend (.env).",
+        solution: "Pastikan konfigurasi WASENDER_API_KEY di file .env backend telah diisi dengan API Key yang valid dari WaSender.",
+      };
+    }
+    if (lower.includes("invalid recipient") || lower.includes("nomor") || lower.includes("phone")) {
+      return {
+        title: "Nomor WhatsApp Tidak Valid",
+        desc: "Format nomor telepon penerima tidak valid atau bukan akun WhatsApp terdaftar.",
+        solution: "Periksa kembali nomor telepon pasien/orang tua di menu Pasien dan pastikan menggunakan format aktif (contoh: 0812... atau 62812...).",
+      };
+    }
+    if (lower.includes("template") || lower.includes("tidak ditemukan")) {
+      return {
+        title: "Template Pesan Belum Aktif",
+        desc: "Template pesan untuk event trigger ini belum dibuat atau berstatus non-aktif.",
+        solution: "Buka tab 'Template Builder' di menu ini, lalu simpan template untuk trigger terkait dan pastikan statusnya aktif.",
+      };
+    }
+    if (lower.includes("disconnected") || lower.includes("session") || lower.includes("device") || lower.includes("500") || lower.includes("400")) {
+      return {
+        title: "Sesi Device WhatsApp Terputus",
+        desc: "Gateway WaSender terputus dari perangkat WhatsApp.",
+        solution: "Buka dashboard wasenderapi.com, periksa koneksi perangkat WhatsApp Anda, dan lakukan scan ulang QR code jika sesi offline.",
+      };
+    }
+    return {
+      title: "Kegagalan Pengiriman Provider",
+      desc: "Server WaSender menolak permintaan pengiriman pesan.",
+      solution: "Periksa sisa kuota pesan WhatsApp, pastikan device online, dan klik 'Kirim Ulang Pesan' untuk mencoba kembali.",
+    };
+  };
+
+  const filteredLogs = logs.filter((log) => {
+    if (logStatusFilter !== "all" && log.status !== logStatusFilter) {
+      return false;
+    }
+    if (logSearch.trim()) {
+      const q = logSearch.toLowerCase();
+      const matchRecipient = log.recipient?.toLowerCase().includes(q);
+      const matchPatient = log.patient_name?.toLowerCase().includes(q);
+      const matchType = log.type?.toLowerCase().includes(q);
+      const matchBody = log.body?.toLowerCase().includes(q);
+      const matchError = log.error_message?.toLowerCase().includes(q);
+      return matchRecipient || matchPatient || matchType || matchBody || matchError;
+    }
+    return true;
+  });
+
+  const failedLogsCount = logs.filter((l) => l.status === "failed").length;
+  const sentLogsCount = logs.filter((l) => l.status === "sent").length;
+  const receivedLogsCount = logs.filter((l) => l.status === "received").length;
 
   const fetchTemplates = async () => {
     try {
@@ -622,71 +742,376 @@ export function WhatsAppManager() {
 
           {/* TAB 2: LOG PENGIRIMAN */}
           {activeTab === "logs" && (
-            <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-muted border-b border-border text-xs font-bold text-muted-foreground uppercase">
-                      <th className="p-4">Penerima</th>
-                      <th className="p-4">Pasien</th>
-                      <th className="p-4">Tipe Pesan</th>
-                      <th className="p-4">Isi Pesan</th>
-                      <th className="p-4">Waktu</th>
-                      <th className="p-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border text-sm">
-                    {logs.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-muted-foreground text-sm">
-                          Belum ada log pengiriman WhatsApp.
-                        </td>
+            <div className="flex flex-col gap-4">
+              {/* Filter & Search Bar */}
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-card border border-border p-3.5 rounded-xl shadow-xs">
+                {/* Status Filter Chips */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    onClick={() => { setLogStatusFilter("all"); setLogCurrentPage(1); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                      logStatusFilter === "all"
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-background hover:bg-muted text-foreground border-border"
+                    }`}
+                  >
+                    Semua ({logs.length})
+                  </button>
+
+                  <button
+                    onClick={() => { setLogStatusFilter("failed"); setLogCurrentPage(1); }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                      logStatusFilter === "failed"
+                        ? "bg-red-600 text-white border-red-600 shadow-xs"
+                        : failedLogsCount > 0
+                        ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400 border-red-200 dark:border-red-800/40 hover:bg-red-100"
+                        : "bg-background hover:bg-muted text-muted-foreground border-border"
+                    }`}
+                  >
+                    <XCircle size={12} />
+                    Gagal ({failedLogsCount})
+                  </button>
+
+                  <button
+                    onClick={() => { setLogStatusFilter("sent"); setLogCurrentPage(1); }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                      logStatusFilter === "sent"
+                        ? "bg-green-600 text-white border-green-600 shadow-xs"
+                        : "bg-background hover:bg-muted text-foreground border-border"
+                    }`}
+                  >
+                    <CheckCircle size={12} />
+                    Terkirim ({sentLogsCount})
+                  </button>
+
+                  <button
+                    onClick={() => { setLogStatusFilter("received"); setLogCurrentPage(1); }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                      logStatusFilter === "received"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                        : "bg-background hover:bg-muted text-foreground border-border"
+                    }`}
+                  >
+                    <MessageSquare size={12} />
+                    Masuk ({receivedLogsCount})
+                  </button>
+                </div>
+
+                {/* Search Input */}
+                <div className="relative min-w-[240px] sm:w-72">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Cari penerima, pasien, error..."
+                    value={logSearch}
+                    onChange={(e) => { setLogSearch(e.target.value); setLogCurrentPage(1); }}
+                    className="w-full bg-background border border-input rounded-lg pl-8 pr-8 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary placeholder:text-muted-foreground"
+                  />
+                  {logSearch && (
+                    <button
+                      onClick={() => setLogSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Logs Table */}
+              <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-muted border-b border-border text-xs font-bold text-muted-foreground uppercase">
+                        <th className="p-4">Penerima</th>
+                        <th className="p-4">Pasien</th>
+                        <th className="p-4">Tipe Pesan</th>
+                        <th className="p-4">Isi Pesan</th>
+                        <th className="p-4">Waktu</th>
+                        <th className="p-4">Status & Diagnosa</th>
+                        <th className="p-4 text-right">Aksi</th>
                       </tr>
-                    ) : (
-                      logs
-                        .slice((logCurrentPage - 1) * logPageSize, logCurrentPage * logPageSize)
-                        .map((log) => (
-                        <tr key={log.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="p-4 font-semibold text-foreground">{log.recipient}</td>
-                          <td className="p-4 text-foreground">{log.patient_name || "-"}</td>
-                          <td className="p-4 font-semibold text-muted-foreground">{log.type}</td>
-                          <td className="p-4 text-muted-foreground max-w-xs truncate">{log.body}</td>
-                          <td className="p-4 text-xs text-muted-foreground">
-                            {log.created_at ? new Date(log.created_at).toLocaleString("id-ID") : "-"}
-                          </td>
-                          <td className="p-4">
-                            <span
-                              className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                                log.status === "sent" || log.status === "received"
-                                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                                  : log.status === "failed"
-                                  ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                                  : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                              }`}
-                            >
-                              {log.status === "sent" || log.status === "received" ? (
-                                <CheckCircle size={10} />
-                              ) : log.status === "failed" ? (
-                                <XCircle size={10} />
-                              ) : (
-                                <Clock size={10} />
-                              )}
-                              {log.status}
-                            </span>
+                    </thead>
+                    <tbody className="divide-y divide-border text-sm">
+                      {filteredLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-muted-foreground text-sm">
+                            {logSearch || logStatusFilter !== "all"
+                              ? "Tidak ada data log yang cocok dengan filter pencarian."
+                              : "Belum ada log pengiriman WhatsApp."}
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        filteredLogs
+                          .slice((logCurrentPage - 1) * logPageSize, logCurrentPage * logPageSize)
+                          .map((log) => (
+                          <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="p-4 font-semibold text-foreground">
+                              <div className="flex items-center gap-1.5">
+                                <Phone size={13} className="text-muted-foreground shrink-0" />
+                                <span>{log.recipient}</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-foreground">{log.patient_name || "-"}</td>
+                            <td className="p-4">
+                              <span className="px-2 py-0.5 rounded bg-muted text-[11px] font-mono font-medium text-foreground">
+                                {log.type}
+                              </span>
+                            </td>
+                            <td className="p-4 text-muted-foreground max-w-xs truncate" title={log.body}>
+                              {log.body}
+                            </td>
+                            <td className="p-4 text-xs text-muted-foreground whitespace-nowrap">
+                              {log.created_at ? new Date(log.created_at).toLocaleString("id-ID") : "-"}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-col items-start gap-1">
+                                <span
+                                  className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                                    log.status === "sent" || log.status === "received"
+                                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                                      : log.status === "failed"
+                                      ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                                      : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                  }`}
+                                >
+                                  {log.status === "sent" || log.status === "received" ? (
+                                    <CheckCircle size={10} />
+                                  ) : log.status === "failed" ? (
+                                    <XCircle size={10} />
+                                  ) : (
+                                    <Clock size={10} />
+                                  )}
+                                  {log.status}
+                                </span>
+
+                                {log.status === "failed" && (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 dark:text-red-400 max-w-[200px] truncate"
+                                    title={log.error_message || "Gagal terkirim"}
+                                  >
+                                    <AlertTriangle size={11} className="shrink-0" />
+                                    {log.error_message || "Detail error belum tercatat"}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-4 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => setSelectedLog(log)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-input bg-background hover:bg-muted text-foreground transition-colors cursor-pointer"
+                                  title="Lihat Detail Log & Diagnosa"
+                                >
+                                  <Eye size={13} />
+                                  Detail
+                                </button>
+
+                                {log.status === "failed" && (
+                                  <button
+                                    onClick={() => handleRetryLog(log.id)}
+                                    disabled={retryingLogId === log.id}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50"
+                                    title="Kirim Ulang Pesan Ini"
+                                  >
+                                    <RotateCcw size={13} className={retryingLogId === log.id ? "animate-spin" : ""} />
+                                    Retry
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <SimplePagination
+                  currentPage={logCurrentPage}
+                  pageSize={logPageSize}
+                  totalItems={filteredLogs.length}
+                  onPageChange={setLogCurrentPage}
+                  onPageSizeChange={setLogPageSize}
+                />
               </div>
-              <SimplePagination
-                currentPage={logCurrentPage}
-                pageSize={logPageSize}
-                totalItems={logs.length}
-                onPageChange={setLogCurrentPage}
-                onPageSizeChange={setLogPageSize}
-              />
+
+              {/* Detailed Log & Error Diagnosis Modal Dialog */}
+              <Dialog open={!!selectedLog} onOpenChange={(open) => { if (!open) setSelectedLog(null); }}>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <div className="flex items-center justify-between gap-3 pr-6">
+                      <DialogTitle className="flex items-center gap-2 text-base font-bold">
+                        <History size={18} className="text-primary" />
+                        Detail Log & Diagnosa WhatsApp
+                      </DialogTitle>
+                      {selectedLog && (
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                            selectedLog.status === "sent" || selectedLog.status === "received"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                              : selectedLog.status === "failed"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          }`}
+                        >
+                          {selectedLog.status === "sent" || selectedLog.status === "received" ? (
+                            <CheckCircle size={10} />
+                          ) : selectedLog.status === "failed" ? (
+                            <XCircle size={10} />
+                          ) : (
+                            <Clock size={10} />
+                          )}
+                          {selectedLog.status}
+                        </span>
+                      )}
+                    </div>
+                    <DialogDescription>
+                      ID Log: #{selectedLog?.id} • Waktu: {selectedLog?.created_at ? new Date(selectedLog.created_at).toLocaleString("id-ID") : "-"}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {selectedLog && (
+                    <div className="flex flex-col gap-4 py-2">
+                      {/* Meta Information Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="bg-muted/40 border border-border p-3 rounded-lg flex flex-col gap-1">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">Nomor Penerima</span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-foreground font-mono">{selectedLog.recipient}</span>
+                            <a
+                              href={`https://wa.me/${selectedLog.recipient.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary hover:underline text-[11px] inline-flex items-center gap-0.5"
+                              title="Buka Chat di WhatsApp"
+                            >
+                              <ExternalLink size={11} /> WA
+                            </a>
+                          </div>
+                        </div>
+
+                        <div className="bg-muted/40 border border-border p-3 rounded-lg flex flex-col gap-1">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">Nama Pasien</span>
+                          <span className="text-xs font-bold text-foreground truncate">{selectedLog.patient_name || "-"}</span>
+                        </div>
+
+                        <div className="bg-muted/40 border border-border p-3 rounded-lg flex flex-col gap-1">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">Tipe Event</span>
+                          <span className="text-xs font-mono font-bold text-foreground">{selectedLog.type}</span>
+                        </div>
+                      </div>
+
+                      {/* Error Diagnostic Box (if failed) */}
+                      {(selectedLog.status === "failed" || selectedLog.error_message) && (
+                        <div className="bg-red-50/80 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-xl p-4 flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-red-800 dark:text-red-300 uppercase tracking-wide flex items-center gap-1.5">
+                              <AlertTriangle size={15} className="text-red-600 dark:text-red-400" />
+                              Detail Log Error & Diagnosa
+                            </h4>
+                            {selectedLog.error_message && (
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(selectedLog.error_message || "");
+                                  toast.success("Pesan error berhasil disalin!");
+                                }}
+                                className="text-[11px] font-semibold text-red-700 dark:text-red-300 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Copy size={12} /> Salin Error
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Raw error code/message */}
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[11px] font-bold text-red-900 dark:text-red-200">Pesan Error dari Provider / Gateway:</span>
+                            <pre className="bg-background/90 border border-red-300/60 dark:border-red-900/50 p-2.5 rounded-lg text-xs font-mono text-red-700 dark:text-red-300 whitespace-pre-wrap break-all leading-relaxed">
+                              {selectedLog.error_message || "Tidak ada rincian pesan error yang dilaporkan (periksa token / session WaSender)."}
+                            </pre>
+                          </div>
+
+                          {/* Intelligent Diagnostic & Solution */}
+                          {(() => {
+                            const advice = getDiagnosticAdvice(selectedLog.error_message);
+                            if (!advice) return null;
+                            return (
+                              <div className="bg-background/80 border border-red-200/70 dark:border-red-900/40 p-3 rounded-lg flex flex-col gap-1.5 text-xs">
+                                <div className="font-bold text-foreground flex items-center gap-1.5">
+                                  <Info size={13} className="text-primary shrink-0" />
+                                  {advice.title}
+                                </div>
+                                <p className="text-muted-foreground">{advice.desc}</p>
+                                <div className="text-primary font-semibold mt-0.5">
+                                  💡 <strong>Saran Solusi:</strong> {advice.solution}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Full Message Preview */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wide text-foreground flex items-center gap-1.5">
+                            <FileText size={13} className="text-primary" />
+                            Isi Pesan Lengkap
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedLog.body);
+                              toast.success("Isi pesan berhasil disalin!");
+                            }}
+                            className="text-[11px] font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Copy size={12} /> Salin Pesan
+                          </button>
+                        </div>
+
+                        <div className="bg-[#efeae2] dark:bg-[#0b141a] border border-border rounded-xl p-4">
+                          <div className="bg-[#dcf8c6] dark:bg-[#005c4b] text-[#303030] dark:text-[#e9edef] rounded-lg p-3 text-xs leading-relaxed border border-green-200/40 dark:border-green-800/40 whitespace-pre-wrap break-words">
+                            {selectedLog.body}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <DialogFooter className="flex flex-row justify-between items-center gap-2 pt-2 border-t border-border">
+                    <div>
+                      {selectedLog && (
+                        <button
+                          onClick={() => handleDeleteLog(selectedLog.id)}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
+                        >
+                          <Trash2 size={14} /> Hapus Log
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedLog(null)}
+                        className="px-3.5 py-2 text-xs font-bold rounded-lg border border-input bg-background hover:bg-muted text-foreground cursor-pointer"
+                      >
+                        Tutup
+                      </button>
+
+                      {selectedLog && selectedLog.status === "failed" && (
+                        <button
+                          onClick={() => handleRetryLog(selectedLog.id)}
+                          disabled={retryingLogId === selectedLog.id}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
+                        >
+                          <RotateCcw size={14} className={retryingLogId === selectedLog.id ? "animate-spin" : ""} />
+                          {retryingLogId === selectedLog.id ? "Mengirim Ulang..." : "Kirim Ulang Pesan (Retry)"}
+                        </button>
+                      )}
+                    </div>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 
