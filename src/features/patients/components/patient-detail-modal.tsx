@@ -713,6 +713,17 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                   </div>
                 </div>
 
+                {/* Info Note to prevent confusion with Jadwal Sesi */}
+                <div className="bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg p-3 text-xs flex items-start gap-2.5 text-blue-900 dark:text-blue-200">
+                  <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">Informasi Penjadwalan Sesi Terapi:</p>
+                    <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+                      Bagian ini hanya untuk menentukan terapis penanggung jawab dan status penerimaan program klinik. Untuk membuat, mengatur kalender mingguan, dan mengalokasikan <strong>Batch Jadwal Sesi</strong>, silakan buka menu <strong>Jadwal Sesi</strong>.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="space-y-2 pt-2">
                   <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">Catatan Internal Klinik Untuk Program Ini</label>
                   <textarea
