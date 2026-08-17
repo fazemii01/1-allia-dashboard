@@ -60,7 +60,7 @@ export interface PatientDetailData {
   relasi_sosial?: string;
   relasi_dengan_ibu?: string;
   relasi_dengan_saudara?: string;
-  status: "baru" | "terjadwal" | "aktif" | "selesai" | "dibatalkan";
+  status: "baru" | "terjadwal" | "aktif" | "selesai" | "dibatalkan" | "lulus";
   therapist?: any;
   therapist_id?: number | null;
   catatan_internal?: string;
@@ -333,6 +333,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
       aktif: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200",
       selesai: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200",
       dibatalkan: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border border-red-200",
+      lulus: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border border-teal-200",
     };
     return styles[status] || "bg-slate-100 text-slate-800";
   };
@@ -692,6 +693,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
                       <option value="terjadwal">Terjadwal</option>
                       <option value="aktif">Aktif Terapi</option>
                       <option value="selesai">Selesai Program</option>
+                      <option value="lulus">Lulus Program</option>
                       <option value="dibatalkan">Dibatalkan</option>
                     </select>
                   </div>
