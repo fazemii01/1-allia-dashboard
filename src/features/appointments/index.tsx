@@ -94,9 +94,10 @@ const TIME_SLOTS = [
   '14:00',
   '15:00',
   '16:00',
-  '17:00',
-  '18:00',
 ]
+
+const OFFICE_OPEN  = '07:00'
+const OFFICE_CLOSE = '16:00'
 
 const DAYS_OF_WEEK = [
   { index: 1, name: 'Senin' },
@@ -116,6 +117,15 @@ function getMonday(d: Date): Date {
   monday.setHours(0, 0, 0, 0)
   return monday
 }
+
+// Returns YYYY-MM-DD from a local Date without UTC shift
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -177,7 +187,7 @@ export default function AppointmentsPage() {
     // Routine pattern helper
     patternDays: [] as number[], // 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
     patternTime: '09:00',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: toLocalDateStr(new Date()),
   })
   const [batchSessions, setBatchSessions] = useState<BatchSessionItem[]>([])
   const [submittingBatch, setSubmittingBatch] = useState(false)
@@ -262,7 +272,7 @@ export default function AppointmentsPage() {
     setSingleForm({
       patient_id: '',
       therapist_id: filterTherapist || (therapists[0] ? String(therapists[0].id) : ''),
-      date: initialDate || new Date().toISOString().split('T')[0],
+      date: initialDate || toLocalDateStr(new Date()),
       time: initialTime || '09:00',
       duration_minutes: 60,
       session_type: 'general',
@@ -298,9 +308,18 @@ export default function AppointmentsPage() {
       return
     }
 
+    if (singleForm.time > OFFICE_CLOSE) {
+      toast.error(`Jam sesi tidak boleh melebihi ${OFFICE_CLOSE} WIB. Klinik tutup pukul ${OFFICE_CLOSE}.`)
+      return
+    }
+    if (singleForm.time < OFFICE_OPEN) {
+      toast.error(`Jam sesi tidak boleh sebelum ${OFFICE_OPEN} WIB.`)
+      return
+    }
+
     setSavingSingle(true)
     try {
-      const scheduled_at = `${singleForm.date}T${singleForm.time}:00`
+      const scheduled_at = `${singleForm.date}T${singleForm.time}:00+07:00`
       const payload = {
         patient_id: Number(singleForm.patient_id),
         therapist_id: Number(singleForm.therapist_id),
@@ -414,7 +433,7 @@ export default function AppointmentsPage() {
       duration_minutes: 60,
       patternDays: [1, 4], // Mon & Thu default
       patternTime: '10:00',
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: toLocalDateStr(new Date()),
     })
     setBatchStep(1)
     setBatchSessions([])
@@ -490,6 +509,12 @@ export default function AppointmentsPage() {
       return
     }
 
+    const outOfHours = batchSessions.find((s) => s.time > OFFICE_CLOSE || s.time < OFFICE_OPEN)
+    if (outOfHours) {
+      toast.error(`Sesi pada ${outOfHours.date} pukul ${outOfHours.time} WIB di luar jam operasional (${OFFICE_OPEN} - ${OFFICE_CLOSE} WIB).`)
+      return
+    }
+
     setSubmittingBatch(true)
     try {
       const payload = {
@@ -497,7 +522,7 @@ export default function AppointmentsPage() {
         therapist_id: Number(batchConfig.therapist_id),
         session_type: batchConfig.session_type,
         sessions: batchSessions.map((s) => ({
-          scheduled_at: `${s.date}T${s.time}:00`,
+          scheduled_at: `${s.date}T${s.time}:00+07:00`,
           duration_minutes: s.duration_minutes,
           notes: s.notes || undefined,
           session_type: batchConfig.session_type,
@@ -774,7 +799,7 @@ export default function AppointmentsPage() {
                   </div>
                   {weekDays.map((day, idx) => {
                     const isToday = new Date().toDateString() === day.toDateString()
-                    const dayStr = day.toISOString().split('T')[0]
+                    const dayStr = toLocalDateStr(day)
                     const daySessionsCount = filteredAppointments.filter(
                       (a) => a.scheduled_at?.startsWith(dayStr) && a.status !== 'dibatalkan'
                     ).length
@@ -814,7 +839,7 @@ export default function AppointmentsPage() {
 
                       {/* 6 Day Cells */}
                       {weekDays.map((day, dIdx) => {
-                        const dateStr = day.toISOString().split('T')[0]
+                        const dateStr = toLocalDateStr(day)
                         const isToday = new Date().toDateString() === day.toDateString()
 
                         // Find appointments that match this day and hour
@@ -1289,10 +1314,13 @@ export default function AppointmentsPage() {
                   <input
                     type="time"
                     required
+                    min={OFFICE_OPEN}
+                    max={OFFICE_CLOSE}
                     value={singleForm.time}
                     onChange={(e) => setSingleForm((f) => ({ ...f, time: e.target.value }))}
                     className="w-full bg-background border border-input rounded-xl p-2.5 text-xs text-foreground focus:outline-none focus:border-primary"
                   />
+                  <p className="text-[10px] text-muted-foreground">Jam operasional: {OFFICE_OPEN} - {OFFICE_CLOSE} WIB</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -1518,10 +1546,13 @@ export default function AppointmentsPage() {
                       <label className="text-[11px] font-bold text-muted-foreground block mb-1">Jam Rutin Sesi:</label>
                       <input
                         type="time"
+                        min={OFFICE_OPEN}
+                        max={OFFICE_CLOSE}
                         value={batchConfig.patternTime}
                         onChange={(e) => setBatchConfig((c) => ({ ...c, patternTime: e.target.value }))}
                         className="w-full bg-background border border-input rounded-lg p-2 text-xs text-foreground"
                       />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{OFFICE_OPEN} - {OFFICE_CLOSE} WIB</p>
                     </div>
                   </div>
                 </div>
