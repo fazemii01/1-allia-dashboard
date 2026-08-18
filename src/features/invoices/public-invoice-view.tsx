@@ -21,6 +21,17 @@ interface InvoiceItem {
   amount: number;
 }
 
+interface PaymentMethod {
+  id: number;
+  bank_name: string;
+  account_number: string;
+  account_name: string;
+  instructions?: string | null;
+  icon_url?: string | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
 interface InvoiceData {
   id: number;
   invoice_number: string;
@@ -51,11 +62,12 @@ export default function PublicInvoiceView({ codeParam }: { codeParam?: string } 
   const params = useParams({ strict: false }) as Record<string, string>;
   const code = codeParam || params?.code || "";
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
-  const [selectedBank, setSelectedBank] = useState("BCA");
+  const [selectedBank, setSelectedBank] = useState("");
 
   const API_BASE = import.meta.env.VITE_API_URL || "https://backend.alliakids.com/api";
 
@@ -79,7 +91,23 @@ export default function PublicInvoiceView({ codeParam }: { codeParam?: string } 
     }
   };
 
+  const fetchPaymentMethods = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/payment-methods`);
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentMethods(data);
+        if (data.length > 0) {
+          setSelectedBank(`${data[0].bank_name} - ${data[0].account_number}`);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load payment methods", e);
+    }
+  };
+
   useEffect(() => {
+    fetchPaymentMethods();
     if (code) {
       fetchInvoice();
     }
@@ -148,16 +176,18 @@ export default function PublicInvoiceView({ codeParam }: { codeParam?: string } 
       <div class="bank-box">
         <div class="bank-title">INFORMASI REKENING PEMBAYARAN RESMI KLINIK ALLIA KIDS:</div>
         <div class="bank-grid">
-          <div>
-            <strong>1. Bank BCA</strong><br />
-            No. Rek: <strong>8831 290 890</strong><br />
-            a.n. Yayasan Allia Kids Indonesia
-          </div>
-          <div>
-            <strong>2. Bank Mandiri</strong><br />
-            No. Rek: <strong>137 00 2901 8890</strong><br />
-            a.n. Yayasan Allia Kids Indonesia
-          </div>
+          ${paymentMethods && paymentMethods.length > 0 ? paymentMethods.map((pm, idx) => `
+            <div>
+              <strong>${idx + 1}. ${pm.bank_name}</strong><br />
+              No. Rek: <strong>${pm.account_number}</strong><br />
+              a.n. ${pm.account_name}
+            </div>
+          `).join('') : `
+            <div>
+              <strong>Transfer Bank</strong><br />
+              Silakan hubungi admin untuk konfirmasi rekening pembayaran resmi.
+            </div>
+          `}
         </div>
       </div>
     ` : `
@@ -705,26 +735,31 @@ export default function PublicInvoiceView({ codeParam }: { codeParam?: string } 
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
-                  <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
-                    <span>Bank BCA</span>
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold">Utama</span>
+                {paymentMethods && paymentMethods.length > 0 ? (
+                  paymentMethods.map((pm, idx) => (
+                    <div key={pm.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col justify-between gap-1">
+                      <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
+                        <span className="text-sm font-extrabold">{pm.bank_name}</span>
+                        {idx === 0 && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold">Utama</span>
+                        )}
+                      </div>
+                      <div className="text-lg font-black text-slate-900 dark:text-white tracking-wider my-1 font-mono select-all">
+                        {pm.account_number}
+                      </div>
+                      <div className="text-xs text-slate-500 font-medium">a.n. {pm.account_name}</div>
+                      {pm.instructions && (
+                        <div className="text-[11px] text-slate-400 italic mt-1 border-t border-slate-200 dark:border-slate-700 pt-1">
+                          {pm.instructions}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 col-span-2 text-center text-xs text-slate-500">
+                    Silakan hubungi admin untuk konfirmasi rekening pembayaran resmi.
                   </div>
-                  <div className="text-lg font-black text-slate-900 dark:text-white tracking-wider my-1">
-                    8831 290 890
-                  </div>
-                  <div className="text-xs text-slate-500">a.n. Yayasan Allia Kids Indonesia</div>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
-                  <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200 mb-1">
-                    <span>Bank Mandiri</span>
-                  </div>
-                  <div className="text-lg font-black text-slate-900 dark:text-white tracking-wider my-1">
-                    137 00 2901 8890
-                  </div>
-                  <div className="text-xs text-slate-500">a.n. Yayasan Allia Kids Indonesia</div>
-                </div>
+                )}
               </div>
 
               {/* Upload Proof Form */}
@@ -738,8 +773,15 @@ export default function PublicInvoiceView({ codeParam }: { codeParam?: string } 
                       onChange={(e) => setSelectedBank(e.target.value)}
                       className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200"
                     >
-                      <option value="BCA">Bank BCA - 8831 290 890</option>
-                      <option value="Mandiri">Bank Mandiri - 137 00 2901 8890</option>
+                      {paymentMethods && paymentMethods.length > 0 ? (
+                        paymentMethods.map((pm) => (
+                          <option key={pm.id} value={`${pm.bank_name} - ${pm.account_number}`}>
+                            {pm.bank_name} - {pm.account_number} (a.n. {pm.account_name})
+                          </option>
+                        ))
+                      ) : (
+                        <option value="Transfer Bank">Transfer Bank Resmi</option>
+                      )}
                       <option value="Lainnya">Transfer Bank Lain / E-Wallet</option>
                     </select>
                   </div>
