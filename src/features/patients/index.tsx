@@ -3,10 +3,11 @@ import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { ThemeSwitch } from "@/components/theme-switch";
-import { Search, Eye, Filter, RefreshCw, Download } from "lucide-react";
+import { Search, Eye, Filter, RefreshCw, Download, Trash2 } from "lucide-react";
 import { PatientPdfBuilder } from "./components/patient-pdf-builder";
 import { PatientDetailModal } from "./components/patient-detail-modal";
 import { SimplePagination } from "@/components/simple-pagination";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -55,6 +56,10 @@ export function Patients() {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Delete Patient state
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [isDeletingPatient, setIsDeletingPatient] = useState(false);
 
   // Modal & Patient Detail state
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -243,6 +248,9 @@ export function Patients() {
   };
 
   const handleUpdateStatus = async (id: string | number, newStatus: Patient["status"]) => {
+    const prevPatients = [...patients];
+    const prevSelected = selectedPatient ? { ...selectedPatient } : null;
+
     setPatients((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
     );
@@ -259,15 +267,14 @@ export function Patients() {
         };
       });
     }
+
     if (typeof id === "number" || (!String(id).startsWith("demo") && !String(id).startsWith("local"))) {
       try {
         await api.patch(`/admin/patients/${id}`, { status: newStatus });
-      } catch {
-        try {
-          await api.patch(`/patients/${id}`, { status: newStatus });
-        } catch (err) {
-          console.error("Failed to update status on server", err);
-        }
+      } catch (err: any) {
+        setPatients(prevPatients);
+        if (prevSelected) setSelectedPatient(prevSelected);
+        toast.error(`Gagal mengubah status: ${err?.message || "Terjadi kesalahan"}`);
       }
     }
   };
@@ -278,6 +285,9 @@ export function Patients() {
 
     const currentPatient = patients.find((p) => p.id === id);
     const shouldUpdateStatusToAktif = therapistId !== null && currentPatient?.status === "baru";
+
+    const prevPatients = [...patients];
+    const prevSelected = selectedPatient ? { ...selectedPatient } : null;
 
     setPatients((prev) =>
       prev.map((p) =>
@@ -322,17 +332,18 @@ export function Patients() {
       }
       try {
         await api.patch(`/admin/patients/${id}`, payload);
-      } catch {
-        try {
-          await api.patch(`/patients/${id}`, payload);
-        } catch (err) {
-          console.error("Failed to assign therapist on server", err);
-        }
+      } catch (err: any) {
+        setPatients(prevPatients);
+        if (prevSelected) setSelectedPatient(prevSelected);
+        toast.error(`Gagal menetapkan terapis: ${err?.message || "Terjadi kesalahan"}`);
       }
     }
   };
 
   const handleUpdateNotes = async (id: string | number, catatan_internal: string) => {
+    const prevPatients = [...patients];
+    const prevSelected = selectedPatient ? { ...selectedPatient } : null;
+
     setPatients((prev) =>
       prev.map((p) => (p.id === id ? { ...p, catatan_internal } : p))
     );
@@ -352,12 +363,10 @@ export function Patients() {
     if (typeof id === "number" || (!String(id).startsWith("demo") && !String(id).startsWith("local"))) {
       try {
         await api.patch(`/admin/patients/${id}`, { catatan_internal });
-      } catch {
-        try {
-          await api.patch(`/patients/${id}`, { catatan_internal });
-        } catch (err) {
-          console.error("Failed to update notes on server", err);
-        }
+      } catch (err: any) {
+        setPatients(prevPatients);
+        if (prevSelected) setSelectedPatient(prevSelected);
+        toast.error(`Gagal menyimpan catatan: ${err?.message || "Terjadi kesalahan"}`);
       }
     }
   };
@@ -401,6 +410,49 @@ export function Patients() {
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus log perkembangan");
       throw err;
+    }
+  };
+
+  const handleDeletePatientClick = (p: Patient) => {
+    setPatientToDelete(p);
+  };
+
+  const handleConfirmDeletePatient = async () => {
+    if (!patientToDelete) return;
+    setIsDeletingPatient(true);
+    try {
+      const bookings = patientToDelete.bookings || [patientToDelete];
+      const idsToDelete = bookings.map((b: any) => b.id);
+
+      for (const id of idsToDelete) {
+        if (typeof id === "number" || (!String(id).startsWith("demo") && !String(id).startsWith("local"))) {
+          try {
+            await api.delete(`/admin/patients/${id}`);
+          } catch {
+            await api.delete(`/patients/${id}`);
+          }
+        } else if (String(id).startsWith("local-")) {
+          const localId = String(id).replace("local-", "");
+          const localApplies = JSON.parse(localStorage.getItem("pending_applies") || "[]");
+          const filtered = localApplies.filter((app: any) => String(app.id) !== localId);
+          localStorage.setItem("pending_applies", JSON.stringify(filtered));
+        }
+      }
+
+      setPatients((prev) => prev.filter((p) => !idsToDelete.includes(p.id)));
+
+      if (selectedPatient && (idsToDelete.includes(selectedPatient.id) || (selectedPatient.bookings || []).some((b: any) => idsToDelete.includes(b.id)))) {
+        setIsDetailModalOpen(false);
+        setSelectedPatient(null);
+      }
+
+      toast.success(`Data pasien ${patientToDelete.nama_lengkap} beserta seluruh invoice, jadwal, dan catatan terkait berhasil dihapus.`);
+      setPatientToDelete(null);
+      await fetchPatients();
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghapus data pasien");
+    } finally {
+      setIsDeletingPatient(false);
     }
   };
 
@@ -454,7 +506,10 @@ export function Patients() {
             type="text"
             placeholder="Cari pasien..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="bg-transparent border-none outline-none w-full text-xs sm:text-sm"
           />
         </div>
@@ -487,7 +542,10 @@ export function Patients() {
 
           <select
             value={filterTerapi}
-            onChange={(e) => setFilterTerapi(e.target.value)}
+            onChange={(e) => {
+              setFilterTerapi(e.target.value);
+              setCurrentPage(1);
+            }}
             className="bg-background border border-input rounded-md px-3 py-1.5 text-sm"
           >
             <option value="">Semua Program Terapi</option>
@@ -499,7 +557,10 @@ export function Patients() {
 
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e) => {
+              setFilterStatus(e.target.value);
+              setCurrentPage(1);
+            }}
             className="bg-background border border-input rounded-md px-3 py-1.5 text-sm"
           >
             <option value="">Semua Status</option>
@@ -571,13 +632,21 @@ export function Patients() {
                         </td>
 
                         <td className="p-4 text-right">
-                          <div className="flex items-center justify-end">
+                          <div className="flex items-center justify-end gap-2">
                             <button
                               type="button"
                               onClick={() => handleOpenDetailModal(p)}
-                              className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+                              className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
                             >
-                              <Eye size={13} /> Detail Pasien
+                              <Eye size={13} /> Detail
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePatientClick(p)}
+                              className="inline-flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 border border-red-200 dark:border-red-800/60 p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                              title="Hapus Pasien & Seluruh Data Terkait"
+                            >
+                              <Trash2 size={13} />
                             </button>
                           </div>
                         </td>
@@ -612,6 +681,7 @@ export function Patients() {
         onSaveLog={handleSaveLogForModal}
         onUpdateLog={handleUpdateLogForModal}
         onDeleteLog={handleDeleteLogForModal}
+        onDeletePatient={handleDeletePatientClick}
         onOpenPdf={handleOpenPdfFromModal}
       />
 
@@ -621,6 +691,34 @@ export function Patients() {
         onClose={() => setIsPdfModalOpen(false)}
         patient={pdfPatient}
         selectedProgram={selectedPdfProgram}
+      />
+
+      {/* Delete Patient Confirmation Modal */}
+      <ConfirmDialog
+        open={patientToDelete !== null}
+        onOpenChange={(open) => { if (!open) setPatientToDelete(null); }}
+        title="Hapus Data Pasien & Seluruh Data Terkait"
+        desc={
+          <div className="space-y-3 text-xs text-left">
+            <p>
+              Apakah Anda yakin ingin menghapus data pasien <strong>{patientToDelete?.nama_lengkap}</strong>?
+            </p>
+            <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/50 rounded-lg text-red-700 dark:text-red-300">
+              <p className="font-bold mb-1">Perhatian: Tindakan ini bersifat permanen!</p>
+              <ul className="list-disc list-inside space-y-0.5 text-[11px]">
+                <li>Seluruh tagihan invoice pasien ini akan dihapus</li>
+                <li>Seluruh jadwal sesi terapi (appointments) akan dihapus</li>
+                <li>Seluruh catatan perkembangan terapi (progress logs) akan dihapus</li>
+                <li>Riwayat log pesan WhatsApp pasien ini akan dibersihkan</li>
+              </ul>
+            </div>
+          </div>
+        }
+        confirmText="Hapus Pasien Permanen"
+        cancelBtnText="Batal"
+        destructive
+        isLoading={isDeletingPatient}
+        handleConfirm={handleConfirmDeletePatient}
       />
     </div>
   );

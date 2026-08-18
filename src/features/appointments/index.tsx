@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -191,6 +191,7 @@ export default function AppointmentsPage() {
   })
   const [batchSessions, setBatchSessions] = useState<BatchSessionItem[]>([])
   const [submittingBatch, setSubmittingBatch] = useState(false)
+  const isSubmittingBatchRef = useRef(false)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -502,16 +503,21 @@ export default function AppointmentsPage() {
   }
 
   const handleSubmitBatch = async () => {
+    if (isSubmittingBatchRef.current) return
+    isSubmittingBatchRef.current = true
+
     // Check if any session still has conflict
     const hasAnyConflict = batchSessions.some((s) => s.hasConflict)
     if (hasAnyConflict) {
       toast.error('Masih ada sesi yang bentrok jadwal. Mohon sesuaikan tanggal/jam sesi yang ditandai merah.')
+      isSubmittingBatchRef.current = false
       return
     }
 
     const outOfHours = batchSessions.find((s) => s.time > OFFICE_CLOSE || s.time < OFFICE_OPEN)
     if (outOfHours) {
       toast.error(`Sesi pada ${outOfHours.date} pukul ${outOfHours.time} WIB di luar jam operasional (${OFFICE_OPEN} - ${OFFICE_CLOSE} WIB).`)
+      isSubmittingBatchRef.current = false
       return
     }
 
@@ -540,6 +546,7 @@ export default function AppointmentsPage() {
     } catch (e: any) {
       toast.error(e.message ?? 'Gagal membuat batch sesi')
     } finally {
+      isSubmittingBatchRef.current = false
       setSubmittingBatch(false)
     }
   }
@@ -673,7 +680,10 @@ export default function AppointmentsPage() {
 
             <select
               value={filterTherapist}
-              onChange={(e) => setFilterTherapist(e.target.value)}
+              onChange={(e) => {
+                setFilterTherapist(e.target.value)
+                setCurrentPage(1)
+              }}
               className="bg-background border border-input rounded-lg px-3 py-1.5 text-xs font-semibold text-foreground focus:outline-none focus:border-primary"
             >
               <option value="">Semua Terapis ({therapists.length})</option>
@@ -686,7 +696,10 @@ export default function AppointmentsPage() {
 
             <select
               value={filterSessionType}
-              onChange={(e) => setFilterSessionType(e.target.value)}
+              onChange={(e) => {
+                setFilterSessionType(e.target.value)
+                setCurrentPage(1)
+              }}
               className="bg-background border border-input rounded-lg px-3 py-1.5 text-xs font-semibold text-foreground focus:outline-none focus:border-primary"
             >
               <option value="">Semua Tipe Sesi</option>
@@ -696,7 +709,10 @@ export default function AppointmentsPage() {
 
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => {
+                setFilterStatus(e.target.value)
+                setCurrentPage(1)
+              }}
               className="bg-background border border-input rounded-lg px-3 py-1.5 text-xs font-semibold text-foreground focus:outline-none focus:border-primary"
             >
               <option value="">Semua Status</option>
@@ -712,6 +728,7 @@ export default function AppointmentsPage() {
                   setFilterSessionType('')
                   setFilterStatus('')
                   setSearchPatient('')
+                  setCurrentPage(1)
                 }}
                 className="text-xs font-bold text-muted-foreground hover:text-foreground px-2 py-1 rounded cursor-pointer"
               >
@@ -725,7 +742,10 @@ export default function AppointmentsPage() {
               type="text"
               placeholder="Cari pasien / catatan..."
               value={searchPatient}
-              onChange={(e) => setSearchPatient(e.target.value)}
+              onChange={(e) => {
+                setSearchPatient(e.target.value)
+                setCurrentPage(1)
+              }}
               className="w-full bg-background border border-input rounded-lg px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
             />
           </div>

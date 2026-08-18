@@ -99,6 +99,7 @@ interface PatientDetailModalProps {
   onSaveLog: (logData: any) => Promise<void>;
   onUpdateLog?: (logId: number, logData: any) => Promise<void>;
   onDeleteLog?: (logId: number) => Promise<void>;
+  onDeletePatient?: (patient: PatientDetailData) => void;
   onOpenPdf: (patient: PatientDetailData, selectedBookingProgram?: string) => void;
 }
 
@@ -115,6 +116,7 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
   onSaveLog,
   onUpdateLog,
   onDeleteLog,
+  onDeletePatient,
   onOpenPdf,
 }) => {
   const [activeTab, setActiveTab] = useState<"bookings" | "progress" | "profile">("bookings");
@@ -1331,9 +1333,21 @@ export const PatientDetailModal: React.FC<PatientDetailModalProps> = ({
 
         {/* Modal Footer */}
         <DialogFooter className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col-reverse sm:flex-row sm:justify-between items-stretch sm:items-center gap-2 sm:gap-3">
-          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto font-bold text-xs py-2.5 sm:py-2">
-            Tutup
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={onClose} className="flex-1 sm:flex-initial font-bold text-xs py-2.5 sm:py-2">
+              Tutup
+            </Button>
+            {onDeletePatient && (
+              <Button
+                variant="destructive"
+                onClick={() => onDeletePatient(patient)}
+                className="flex-1 sm:flex-initial bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 border border-red-200 dark:border-red-800/60 font-bold text-xs gap-1.5 py-2.5 sm:py-2 cursor-pointer shadow-none"
+              >
+                <Trash2 className="h-4 w-4" />
+                Hapus Pasien
+              </Button>
+            )}
+          </div>
           <Button
             onClick={() => onOpenPdf(patient, activeBooking?.jenis_terapi)}
             className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-sm py-2.5 sm:py-2"

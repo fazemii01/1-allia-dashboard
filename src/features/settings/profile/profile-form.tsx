@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
+import { api, apiFetch } from '@/lib/api'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -48,23 +48,14 @@ export function ProfileForm() {
 
     setUploading(true)
     try {
-      const token = localStorage.getItem('admin_token')
       const formData = new FormData()
       formData.append('image', file)
 
-      const response = await fetch('http://localhost:3001/api/auth/profile/upload', {
+      const result = await apiFetch<{ url: string }>('/auth/profile/upload', {
         method: 'POST',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: formData,
       })
 
-      if (!response.ok) {
-        throw new Error('Gagal mengunggah foto profil.')
-      }
-
-      const result = await response.json()
       setProfile((prev) => ({ ...prev, photo_url: result.url }))
       toast.success('Foto profil berhasil diunggah')
     } catch (err: any) {

@@ -535,7 +535,7 @@ function MomentsTab() {
               <div className="space-y-1"><label className="text-xs font-bold text-slate-700 dark:text-slate-300">Judul Momen</label><input type="text" required placeholder="Contoh: Skrining Tumbuh Kembang di TK..." value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl px-3 py-2.5 text-xs font-medium focus:outline-none" /></div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Foto</label>
-                {form.img_url && <div className="rounded-xl overflow-hidden aspect-video border border-slate-200 dark:border-slate-800"><img src={form.img_url.startsWith('http') ? form.img_url : `http://localhost:3001${form.img_url}`} alt="preview" className="w-full h-full object-cover" /></div>}
+                {form.img_url && <div className="rounded-xl overflow-hidden aspect-video border border-slate-200 dark:border-slate-800"><img src={resolveUrl(form.img_url)} alt="preview" className="w-full h-full object-cover" /></div>}
                 <div className="flex gap-2">
                   <input type="file" accept="image/*" onChange={handleUpload} disabled={uploading} className="hidden" id="moment-img-upload" />
                   <label htmlFor="moment-img-upload" className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold px-3 py-2 rounded-xl text-xs text-center cursor-pointer">{uploading ? 'Mengunggah...' : 'Unggah Foto'}</label>
