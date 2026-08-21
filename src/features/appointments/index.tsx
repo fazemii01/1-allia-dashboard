@@ -42,6 +42,7 @@ import {
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { SimplePagination } from '@/components/simple-pagination'
+import { SearchablePatientSelect } from './components/patient-searchable-select'
 
 interface Patient {
   id: string | number
@@ -1244,18 +1245,12 @@ export default function AppointmentsPage() {
             <div className="space-y-4 text-xs">
               <div className="space-y-1.5">
                 <label className="font-bold text-foreground uppercase tracking-wide">Pilih Pasien *</label>
-                <select
+                <SearchablePatientSelect
+                  patients={patients}
                   value={singleForm.patient_id}
-                  onChange={(e) => setSingleForm((f) => ({ ...f, patient_id: e.target.value }))}
-                  className="w-full bg-background border border-input rounded-xl p-2.5 text-xs font-semibold text-foreground focus:outline-none focus:border-primary"
-                >
-                  <option value="">-- Pilih Pasien Terdaftar --</option>
-                  {patients.map((p) => (
-                    <option key={p.id} value={String(p.id)}>
-                      {p.nama_lengkap} {p.no_telepon ? `(${p.no_telepon})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSingleForm((f) => ({ ...f, patient_id: val }))}
+                  placeholder="-- Pilih Pasien Terdaftar --"
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -1419,18 +1414,12 @@ export default function AppointmentsPage() {
               <div className="space-y-4 text-xs pt-2">
                 <div className="space-y-1.5">
                   <label className="font-bold text-foreground uppercase tracking-wide">Pilih Pasien Terdaftar *</label>
-                  <select
+                  <SearchablePatientSelect
+                    patients={patients}
                     value={batchConfig.patient_id}
-                    onChange={(e) => setBatchConfig((c) => ({ ...c, patient_id: e.target.value }))}
-                    className="w-full bg-background border border-input rounded-xl p-2.5 text-xs font-semibold text-foreground focus:outline-none focus:border-primary"
-                  >
-                    <option value="">-- Pilih Pasien --</option>
-                    {patients.map((p) => (
-                      <option key={p.id} value={String(p.id)}>
-                        {p.nama_lengkap} {p.jenis_terapi ? `(${p.jenis_terapi})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setBatchConfig((c) => ({ ...c, patient_id: val }))}
+                    placeholder="-- Pilih Pasien Terdaftar --"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
